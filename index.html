@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS SAHAM — Institutional Intelligence. Retail Accessible.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --bg:#060A12; --glass:rgba(13,20,40,0.7); --border:rgba(255,255,255,0.08);
+  --blue:#00D4FF; --purple:#7B2FFF; --gold:#FFB800;
+  --bull:#00E676; --bear:#FF3D5A;
+  --t1:#E8F0FE; --t2:rgba(232,240,254,0.55); --t3:rgba(232,240,254,0.3);
+  --r:14px; --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;overflow-x:hidden;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.3);border-radius:2px;}
+
+/* BG */
+#bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(6,10,18,0.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 40px;height:64px;gap:32px;}
+.nav-logo{font-size:20px;font-weight:900;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.nav-links{display:flex;gap:24px;margin-left:auto;}
+.nav-link{font-size:13px;color:var(--t2);text-decoration:none;cursor:pointer;transition:color 0.2s;}
+.nav-link:hover{color:var(--t1);}
+.nav-btn{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;transition:all 0.2s;}
+.nav-login{background:transparent;border:1px solid var(--border);color:var(--t2);}
+.nav-login:hover{border-color:var(--blue);color:var(--blue);}
+.nav-cta{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:none;margin-left:8px;}
+.nav-cta:hover{opacity:0.9;transform:translateY(-1px);}
+
+/* SECTIONS */
+section{position:relative;z-index:1;}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:100px 20px 60px;text-align:center;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;
+  padding:6px 16px;border-radius:20px;
+  background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);
+  font-size:12px;color:var(--blue);font-weight:600;margin-bottom:24px;}
+.hero-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero-title{font-size:clamp(36px,7vw,72px);font-weight:900;line-height:1.1;margin-bottom:16px;
+  background:linear-gradient(135deg,var(--t1) 60%,var(--blue));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:clamp(15px,2.5vw,20px);color:var(--t2);max-width:680px;line-height:1.7;margin-bottom:36px;}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.btn-hero-primary{padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;
+  background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;
+  border:none;cursor:pointer;text-decoration:none;transition:all 0.2s;
+  box-shadow:0 8px 30px rgba(0,212,255,0.3);}
+.btn-hero-primary:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,212,255,0.4);}
+.btn-hero-ghost{padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;
+  background:transparent;border:1px solid var(--border);color:var(--t2);
+  cursor:pointer;text-decoration:none;transition:all 0.2s;}
+.btn-hero-ghost:hover{border-color:var(--blue);color:var(--t1);}
+.hero-stats{display:flex;gap:48px;margin-top:56px;justify-content:center;flex-wrap:wrap;}
+.stat{text-align:center;}
+.stat-val{font-family:var(--mono);font-size:32px;font-weight:900;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stat-label{font-size:12px;color:var(--t3);margin-top:4px;text-transform:uppercase;letter-spacing:0.8px;}
+
+/* PREVIEW CARD */
+.preview-section{padding:80px 20px;display:flex;flex-direction:column;align-items:center;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--blue);margin-bottom:12px;}
+.section-title{font-size:clamp(24px,4vw,40px);font-weight:900;text-align:center;margin-bottom:12px;}
+.section-sub{font-size:15px;color:var(--t2);text-align:center;max-width:600px;margin-bottom:40px;}
+
+.preview-window{width:100%;max-width:1100px;
+  background:rgba(11,17,32,0.9);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  box-shadow:0 40px 120px rgba(0,0,0,0.6);}
+.pw-bar{height:36px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:8px;}
+.pw-dot{width:10px;height:10px;border-radius:50%;}
+.pw-url{flex:1;margin:0 16px;background:rgba(255,255,255,0.06);
+  border-radius:6px;padding:4px 12px;font-size:11px;color:var(--t3);font-family:var(--mono);}
+.pw-content{padding:20px;}
+
+/* MINI DASHBOARD PREVIEW */
+.mini-dashboard{display:grid;grid-template-columns:180px 1fr;gap:1px;background:var(--border);border-radius:8px;overflow:hidden;min-height:400px;}
+.mini-sidebar{background:#0B1120;padding:12px 0;}
+.ms-logo{font-size:14px;font-weight:800;padding:8px 14px;margin-bottom:8px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.ms-item{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:11px;color:var(--t3);cursor:default;}
+.ms-item.active{color:var(--blue);background:rgba(0,212,255,0.08);}
+.mini-main{background:#060A12;padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr;
+  grid-template-rows:auto 1fr;gap:10px;}
+.mini-card{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.mc-label{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;}
+.mc-val{font-family:var(--mono);font-size:16px;font-weight:800;margin-top:4px;}
+.mini-heatmap{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px;padding:10px;
+  background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;}
+.mh-cell{border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,0.85);}
+
+/* FEATURES */
+.features-section{padding:80px 20px;}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1100px;margin:0 auto;}
+.feat-card{background:var(--glass);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:var(--r);padding:24px;
+  transition:all 0.3s;cursor:default;}
+.feat-card:hover{border-color:var(--blue);transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+.feat-icon{font-size:28px;margin-bottom:14px;}
+.feat-title{font-size:16px;font-weight:800;margin-bottom:8px;}
+.feat-desc{font-size:13px;color:var(--t2);line-height:1.7;}
+.feat-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
+.feat-tag{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;
+  background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);color:var(--blue);}
+
+/* PRICING */
+.pricing-section{padding:80px 20px;display:flex;flex-direction:column;align-items:center;}
+.pricing-grid{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:20px;max-width:900px;width:100%;}
+.price-card{background:var(--glass);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:var(--r);padding:28px;position:relative;overflow:hidden;}
+.price-card.featured{border-color:var(--blue);box-shadow:0 0 60px rgba(0,212,255,0.15);}
+.price-card.featured::before{content:'TERPOPULER';position:absolute;top:0;right:0;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  font-size:9px;font-weight:800;letter-spacing:1px;padding:5px 14px;
+  border-radius:0 var(--r) 0 10px;}
+.pc-plan{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:8px;}
+.pc-price{font-family:var(--mono);font-size:32px;font-weight:900;margin-bottom:4px;}
+.pc-period{font-size:12px;color:var(--t2);margin-bottom:20px;}
+.pc-features{list-style:none;margin-bottom:24px;}
+.pc-features li{font-size:13px;color:var(--t2);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  display:flex;gap:8px;}
+.pc-features li::before{content:'✓';color:var(--bull);flex-shrink:0;}
+.pc-features li.no{color:var(--t3);}
+.pc-features li.no::before{content:'✗';color:var(--t3);}
+.pc-btn{width:100%;padding:12px;border-radius:8px;font-size:14px;font-weight:700;
+  cursor:pointer;text-align:center;border:none;transition:all 0.2s;text-decoration:none;display:block;}
+.pc-btn.primary{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;}
+.pc-btn.ghost{background:transparent;border:1px solid var(--border);color:var(--t2);}
+.pc-btn:hover{opacity:0.9;transform:translateY(-1px);}
+
+/* EXPERT FRAMEWORK */
+.expert-section{padding:80px 20px;display:flex;flex-direction:column;align-items:center;}
+.expert-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1000px;width:100%;}
+.expert-card{background:var(--glass);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:var(--r);padding:20px;text-align:center;}
+.ec-pct{font-family:var(--mono);font-size:28px;font-weight:900;color:var(--blue);margin-bottom:8px;}
+.ec-method{font-size:13px;font-weight:800;margin-bottom:6px;}
+.ec-desc{font-size:12px;color:var(--t2);line-height:1.6;}
+.ec-tags{margin-top:10px;display:flex;flex-direction:column;gap:4px;}
+.ec-tag{font-size:10px;color:var(--t3);padding:3px 6px;background:rgba(255,255,255,0.03);border-radius:4px;}
+
+/* CTA SECTION */
+.cta-section{padding:100px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.cta-glow{width:600px;height:400px;position:absolute;
+  background:radial-gradient(ellipse,rgba(0,212,255,0.12) 0%,transparent 70%);
+  pointer-events:none;left:50%;transform:translateX(-50%);}
+.cta-title{font-size:clamp(28px,5vw,48px);font-weight:900;margin-bottom:16px;position:relative;}
+.cta-sub{font-size:16px;color:var(--t2);max-width:500px;margin-bottom:36px;position:relative;}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:32px 40px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--t3);position:relative;z-index:1;}
+.footer-links{display:flex;gap:20px;}
+.footer-links a{color:var(--t3);text-decoration:none;}
+.footer-links a:hover{color:var(--blue);}
+.disclaimer-footer{font-size:10px;color:rgba(232,240,254,0.2);margin-top:8px;line-height:1.6;max-width:800px;}
+
+@media (max-width: 768px) {
+  nav { padding: 0 16px; height: 56px; gap: 12px; }
+  .nav-links { display: none; }
+  .nav-btn { padding: 6px 14px; font-size: 12px; }
+  .hero { padding: 80px 16px 40px; }
+  .hero-stats { gap: 24px; }
+  .preview-section { padding: 40px 16px; }
+  .features-grid { grid-template-columns: 1fr !important; }
+  .pricing-grid { grid-template-columns: 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  .hero-title { font-size: 32px; }
+  .hero-sub { font-size: 14px; }
+  .hero-btns { flex-direction: column; align-items: center; }
+  .hero-btns a, .hero-btns button { width: 100%; text-align: center; }
+}
+
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">NEXUS</div>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Fitur</a>
+    <a href="#harga" class="nav-link">Harga</a>
+    <a href="#metodologi" class="nav-link">Metodologi</a>
+    <a href="login.html" class="nav-btn nav-login">Login</a>
+    <a href="login.html?tab=register" class="nav-btn nav-cta">Mulai Gratis →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="hero-dot"></div>
+    Data KSEI 30 Apr 2026 · 956 Tickers · AI-Powered
+  </div>
+  <h1 class="hero-title">Institutional Intelligence.<br>Retail Accessible.</h1>
+  <p class="hero-sub">Platform analisa saham IDX paling lengkap. Ownership KSEI, smart money tracking, AI scoring 6 dimensi, makro komoditas — semua dalam satu layar.</p>
+  <div class="hero-btns">
+    <a href="login.html?tab=register" class="btn-hero-primary">🚀 Coba Gratis 14 Hari</a>
+    <a href="index.html" class="btn-hero-ghost">👀 Lihat Demo Live</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-val">956</div><div class="stat-label">IDX Tickers</div></div>
+    <div class="stat"><div class="stat-val">5.270</div><div class="stat-label">Investor KSEI</div></div>
+    <div class="stat"><div class="stat-val">18</div><div class="stat-label">Konglomerat</div></div>
+    <div class="stat"><div class="stat-val">6</div><div class="stat-label">Dimensi AI Scoring</div></div>
+    <div class="stat"><div class="stat-val">20+</div><div class="stat-label">Jenis Heatmap</div></div>
+  </div>
+</section>
+
+<!-- PREVIEW -->
+<section class="preview-section" id="preview">
+  <div class="section-label">Dashboard Preview</div>
+  <h2 class="section-title">Semua Informasi dalam Satu Layar</h2>
+  <p class="section-sub">Ketika kamu buka NEXUS, langsung terlihat harga, fair value, ownership, institutional flow, AI summary, risk, valuasi, dan korelasi makro.</p>
+  <div class="preview-window">
+    <div class="pw-bar">
+      <div class="pw-dot" style="background:#FF5F57;"></div>
+      <div class="pw-dot" style="background:#FFBD2E;"></div>
+      <div class="pw-dot" style="background:#28CA41;"></div>
+      <div class="pw-url">nexus-saham.id/dashboard</div>
+    </div>
+    <div class="pw-content">
+      <div class="mini-dashboard">
+        <div class="mini-sidebar">
+          <div class="ms-logo">NEXUS</div>
+          <div class="ms-item active">⬛ Overview</div>
+          <div class="ms-item">🌡️ Heatmaps</div>
+          <div class="ms-item">🧲 Smart Money</div>
+          <div class="ms-item">💰 Capital Flow</div>
+          <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 0;"></div>
+          <div class="ms-item">🔬 Screener</div>
+          <div class="ms-item">🤖 AI Research</div>
+          <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 0;"></div>
+          <div class="ms-item">🏢 Konglomerat</div>
+          <div class="ms-item">🌐 Makro</div>
+          <div class="ms-item">⚡ Market Close</div>
+        </div>
+        <div class="mini-main">
+          <div class="mini-card">
+            <div class="mc-label">IHSG</div>
+            <div class="mc-val" style="color:#FF3D5A">7.234 ▼-0.42%</div>
+          </div>
+          <div class="mini-card">
+            <div class="mc-label">Foreign Flow</div>
+            <div class="mc-val" style="color:#FF3D5A">-Rp 420M</div>
+          </div>
+          <div class="mini-card">
+            <div class="mc-label">Smart Money</div>
+            <div class="mc-val" style="color:#FFB800">⚡ 3 Sinyal</div>
+          </div>
+          <div class="mini-heatmap" id="mini-heatmap"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:20px;">
+    <a href="index.html" style="color:var(--blue);font-size:13px;text-decoration:none;font-weight:600;">
+      Buka Demo Lengkap →
+    </a>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div style="text-align:center;max-width:600px;margin:0 auto 40px;">
+    <div class="section-label">Fitur Platform</div>
+    <h2 class="section-title">Lebih dari Sekadar Harga Saham</h2>
+    <p class="section-sub">NEXUS menggabungkan 6 lapisan analisa yang biasanya hanya dimiliki institusi.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card" onclick="window.location='ownership.html'">
+      <div class="feat-icon">🏢</div>
+      <div class="feat-title">Ownership Intelligence</div>
+      <div class="feat-desc">Data KSEI lengkap 956 tickers. Lihat siapa yang pegang saham, berapa %, dan bagaimana tren perubahan kepemilikannya.</div>
+      <div class="feat-tags"><span class="feat-tag">KSEI Data</span><span class="feat-tag">Conglomerate Map</span><span class="feat-tag">Float Screener</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='index.html'">
+      <div class="feat-icon">🧲</div>
+      <div class="feat-title">Smart Money Radar</div>
+      <div class="feat-desc">Deteksi unusual volume, accumulation tersembunyi, sector rotation, dan liquidity movement — sebelum publik sadar.</div>
+      <div class="feat-tags"><span class="feat-tag">Unusual Volume</span><span class="feat-tag">Broker Flow</span><span class="feat-tag">Hidden Rotation</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='stock.html'">
+      <div class="feat-icon">🤖</div>
+      <div class="feat-title">AI Research Analyst</div>
+      <div class="feat-desc">Setiap saham mendapat laporan AI lengkap: fundamental, valuasi, makro, ownership, dan foreign flow — dalam hitungan detik.</div>
+      <div class="feat-tags"><span class="feat-tag">Nexus Score</span><span class="feat-tag">Fair Value</span><span class="feat-tag">Margin of Safety</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='index.html'">
+      <div class="feat-icon">🌡️</div>
+      <div class="feat-title">20+ Jenis Heatmap</div>
+      <div class="feat-desc">Sector heatmap, market cap, foreign flow, smart money, valuation, volume anomaly — semua dalam satu klik.</div>
+      <div class="feat-tags"><span class="feat-tag">Market Cap</span><span class="feat-tag">Foreign Flow</span><span class="feat-tag">Valuation</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='market-close.html'">
+      <div class="feat-icon">📰</div>
+      <div class="feat-title">AI Market Close Summary</div>
+      <div class="feat-desc">Setiap market tutup jam 16:00, AI langsung generate rangkuman harian: capital flow, risk alert, dan outlook besok dengan probabilitas.</div>
+      <div class="feat-tags"><span class="feat-tag">Daily Summary</span><span class="feat-tag">Risk Alert</span><span class="feat-tag">Probabilitas</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='index.html'">
+      <div class="feat-icon">🌐</div>
+      <div class="feat-title">Economic Compass</div>
+      <div class="feat-desc">BI Rate, FED Rate, DXY, Gold, Coal, CPO, Nickel, Minyak — semua dikaitkan langsung ke dampak per saham di IDX.</div>
+      <div class="feat-tags"><span class="feat-tag">BI Rate</span><span class="feat-tag">Komoditas</span><span class="feat-tag">Global Macro</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='ownership.html'">
+      <div class="feat-icon">🌌</div>
+      <div class="feat-title">3D Galaxy Map</div>
+      <div class="feat-desc">Visualisasi konglomerat IDX dalam ruang 3D interaktif. Putar, zoom, klik bintang untuk lihat detail kepemilikan setiap saham.</div>
+      <div class="feat-tags"><span class="feat-tag">Three.js</span><span class="feat-tag">WebGL</span><span class="feat-tag">Interaktif</span></div>
+    </div>
+    <div class="feat-card" onclick="window.location='screener.html'">
+      <div class="feat-icon">🔍</div>
+      <div class="feat-title">Smart Money Screener</div>
+      <div class="feat-desc">Filter 956 saham dari 100+ parameter: Nexus Score, MoS, broker flow, foreign net buy, valuasi, makro exposure.</div>
+      <div class="feat-tags"><span class="feat-tag">Multi-filter</span><span class="feat-tag">AI Score</span><span class="feat-tag">Export</span></div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💬</div>
+      <div class="feat-title">AI Chat Assistant</div>
+      <div class="feat-desc">Tanya apa saja dalam Bahasa Indonesia: "Siapa pemegang BBCA?", "Analisa ADRO sekarang", "Coal naik efeknya ke saham apa?" — dijawab real-time.</div>
+      <div class="feat-tags"><span class="feat-tag">Bahasa Indonesia</span><span class="feat-tag">AI Chat</span><span class="feat-tag">RAG</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- METODOLOGI -->
+<section class="expert-section" id="metodologi">
+  <div class="section-label">AI Scoring Framework</div>
+  <h2 class="section-title" style="text-align:center;margin-bottom:12px;">Metodologi Kelas Dunia</h2>
+  <p class="section-sub" style="text-align:center;max-width:600px;margin-bottom:40px;">AI NEXUS menggabungkan 4 filosofi investasi terbaik dunia dalam satu framework terpadu.</p>
+  <div class="expert-grid">
+    <div class="expert-card">
+      <div class="ec-pct">25%</div>
+      <div class="ec-method">Business Quality</div>
+      <div class="ec-desc">Kualitas bisnis, economic moat, ROE konsisten, free cash flow</div>
+      <div class="ec-tags">
+        <div class="ec-tag">ROE > 15% (5Y)</div>
+        <div class="ec-tag">Debt/Equity ratio</div>
+        <div class="ec-tag">Free Cash Flow</div>
+      </div>
+    </div>
+    <div class="expert-card">
+      <div class="ec-pct">20%</div>
+      <div class="ec-method">Valuation</div>
+      <div class="ec-desc">DCF, P/E vs historis, P/B vs ROE, EV/EBITDA, Margin of Safety</div>
+      <div class="ec-tags">
+        <div class="ec-tag">DCF Intrinsic Value</div>
+        <div class="ec-tag">Margin of Safety</div>
+        <div class="ec-tag">Peer Comparison</div>
+      </div>
+    </div>
+    <div class="expert-card">
+      <div class="ec-pct">15%</div>
+      <div class="ec-method">Macro Impact</div>
+      <div class="ec-desc">Siklus ekonomi, sensitivitas suku bunga, komoditas, DXY</div>
+      <div class="ec-tags">
+        <div class="ec-tag">Economic Cycle</div>
+        <div class="ec-tag">Rate Sensitivity</div>
+        <div class="ec-tag">Commodity Link</div>
+      </div>
+    </div>
+    <div class="expert-card">
+      <div class="ec-pct">10%</div>
+      <div class="ec-method">Quantitative Model</div>
+      <div class="ec-desc">Price momentum, mean reversion, volatility-adjusted returns, liquidity score</div>
+      <div class="ec-tags">
+        <div class="ec-tag">Momentum (1/3/6M)</div>
+        <div class="ec-tag">Anomaly Detection</div>
+        <div class="ec-tag">Liquidity Score</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="harga">
+  <div class="section-label">Harga</div>
+  <h2 class="section-title" style="margin-bottom:12px;">Mulai dari Gratis</h2>
+  <p class="section-sub" style="margin-bottom:40px;">Tidak perlu bayar untuk melihat overview pasar. Upgrade untuk fitur institusional.</p>
+  <div class="pricing-grid">
+
+    <div class="price-card">
+      <div class="pc-plan">Gratis</div>
+      <div class="pc-price">Rp 0</div>
+      <div class="pc-period">Selamanya</div>
+      <ul class="pc-features">
+        <li>Market heatmap (delay 15 menit)</li>
+        <li>IHSG & LQ45 overview</li>
+        <li>Sektor performance</li>
+        <li>AI chat terbatas (5 tanya/hari)</li>
+        <li class="no">KSEI ownership data</li>
+        <li class="no">Smart Money Radar</li>
+        <li class="no">Foreign flow real-time</li>
+        <li class="no">AI Research Report</li>
+      </ul>
+      <a href="login.html?tab=register" class="pc-btn ghost">Daftar Gratis</a>
+    </div>
+
+    <div class="price-card featured">
+      <div class="pc-plan">Pro</div>
+      <div class="pc-price" style="color:var(--blue)">Rp 199K</div>
+      <div class="pc-period">/bulan · atau Rp 1,5 juta/tahun</div>
+      <ul class="pc-features">
+        <li>Semua fitur Gratis</li>
+        <li>KSEI ownership 956 tickers</li>
+        <li>Smart Money Radar (full)</li>
+        <li>Foreign flow real-time</li>
+        <li>AI Research Report per saham</li>
+        <li>20+ jenis heatmap</li>
+        <li>Market Close AI summary</li>
+        <li>Screener multi-faktor</li>
+        <li>3D Galaxy Map</li>
+        <li>AI chat unlimited</li>
+      </ul>
+      <a href="login.html?tab=register" class="pc-btn primary">Mulai 14 Hari Gratis →</a>
+    </div>
+
+    <div class="price-card">
+      <div class="pc-plan">Enterprise</div>
+      <div class="pc-price">Custom</div>
+      <div class="pc-period">Untuk institusi & broker</div>
+      <ul class="pc-features">
+        <li>Semua fitur Pro</li>
+        <li>API akses (REST + WebSocket)</li>
+        <li>Data FactSet / LSEG premium</li>
+        <li>White-label untuk broker</li>
+        <li>Dedicated support</li>
+        <li>SLA 99.9% uptime</li>
+        <li>Custom alert & integration</li>
+      </ul>
+      <a href="mailto:enterprise@nexus-saham.id" class="pc-btn ghost">Hubungi Kami</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <h2 class="cta-title">Siap Investasi Seperti Institusi?</h2>
+  <p class="cta-sub">Bergabung dengan investor yang sudah menggunakan analisa institutional-grade untuk keputusan investasi mereka.</p>
+  <div style="display:flex;gap:14px;justify-content:center;position:relative;">
+    <a href="login.html?tab=register" class="btn-hero-primary">🚀 Mulai 14 Hari Gratis</a>
+    <a href="index.html" class="btn-hero-ghost">Lihat Demo →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div style="font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px;">NEXUS SAHAM</div>
+    <div class="disclaimer-footer">⚠️ Platform ini bersifat informasional dan bukan rekomendasi investasi. Investasi mengandung risiko. Lakukan due diligence sebelum berinvestasi.</div>
+  </div>
+  <div style="text-align:right;">
+    <div class="footer-links" style="justify-content:flex-end;margin-bottom:8px;">
+      <a href="index.html">Dashboard</a>
+      <a href="screener.html">Screener</a>
+      <a href="ownership.html">Ownership</a>
+      <a href="market-close.html">Market Close</a>
+    </div>
+    <div style="font-size:11px;color:rgba(232,240,254,0.2);">© 2026 NEXUS SAHAM · Data: IDX, KSEI, BEI</div>
+  </div>
+</footer>
+
+<script>
+// Mini heatmap
+const tickers = ['BBCA+0.8','BBRI-1.2','BMRI+1.5','TLKM-0.3','ASII+2.1','UNVR-0.7','BBNI+0.4','HMSP-1.8','ICBP+0.2','KLBF+1.1','ANTM+2.4','ADRO-0.9','GOTO-3.1','DSSA+2.2','PTBA-2.1','BUKA+2.8'];
+document.getElementById('mini-heatmap').innerHTML = tickers.map(t=>{
+  const [ticker,chg] = [t.slice(0,-4),t.slice(-4)];
+  const v = parseFloat(chg);
+  const bg = v>2?'#00A855':v>0.5?'rgba(0,200,80,0.5)':v>0?'rgba(0,200,80,0.3)':v>-1?'rgba(220,50,60,0.4)':v>-2?'#C62828':'#B71C1C';
+  return `<div class="mh-cell" style="background:${bg};flex:${Math.abs(v)+1};min-width:36px;height:44px;">${ticker}</div>`;
+}).join('');
+
+// Particle BG
+const canvas = document.getElementById('bg');
+const renderer = new THREE.WebGLRenderer({canvas, alpha:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.z = 30;
+const geo = new THREE.BufferGeometry();
+const pos = new Float32Array(2000*3);
+for(let i=0;i<2000*3;i++) pos[i]=(Math.random()-0.5)*120;
+geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+const mat = new THREE.PointsMaterial({color:0x00D4FF,size:0.1,transparent:true,opacity:0.4});
+const pts = new THREE.Points(geo,mat);
+scene.add(pts);
+let t=0;
+(function animate(){requestAnimationFrame(animate);t+=0.0003;pts.rotation.y=t;pts.rotation.x=t*0.4;renderer.render(scene,camera);})();
+window.addEventListener('resize',()=>{renderer.setSize(window.innerWidth,window.innerHeight);camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();});
+
+// Smooth scroll for nav links
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{e.preventDefault();document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'});});
+});
+</script>
+</body>
+</html>
