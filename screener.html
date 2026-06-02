@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Smart Money Screener</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg-primary:#060A12;--bg-secondary:#0B1120;--glass-bg:rgba(13,20,40,0.8);
+  --glass-border:rgba(255,255,255,0.08);--glass-blur:blur(20px);
+  --accent-blue:#00D4FF;--accent-purple:#7B2FFF;--accent-gold:#FFB800;
+  --bull:#00E676;--bear:#FF3D5A;--neutral:#607D8B;
+  --text-primary:#E8F0FE;--text-secondary:rgba(232,240,254,0.55);--text-muted:rgba(232,240,254,0.3);
+  --border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px;
+  --font-mono:'JetBrains Mono','Roboto Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.3);border-radius:2px;}
+
+.topbar{background:rgba(6,10,18,0.95);backdrop-filter:var(--glass-blur);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 20px;height:56px;sticky:top;position:sticky;top:0;z-index:100;}
+.logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+
+.main{padding:20px;max-width:1600px;margin:0 auto;}
+
+.page-title{font-size:22px;font-weight:800;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--text-secondary);margin-bottom:20px;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.filter-group{display:flex;flex-direction:column;gap:4px;}
+.filter-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;}
+.filter-select,.filter-input{
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;color:var(--text-primary);
+  font-size:12px;outline:none;min-width:130px;
+}
+.filter-select:focus,.filter-input:focus{border-color:var(--accent-blue);}
+.filter-select option{background:var(--bg-secondary);}
+
+.filter-btn{padding:6px 16px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:700;}
+.btn-apply{background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));color:#fff;}
+.btn-reset{background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text-secondary);}
+
+/* PRESET TABS */
+.preset-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.preset{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;
+  border:1px solid;transition:all 0.2s;}
+.preset.sm{background:rgba(255,184,0,0.1);border-color:rgba(255,184,0,0.3);color:var(--accent-gold);}
+.preset.sm.active{background:rgba(255,184,0,0.25);}
+.preset.val{background:rgba(0,230,118,0.1);border-color:rgba(0,230,118,0.3);color:var(--bull);}
+.preset.val.active{background:rgba(0,230,118,0.25);}
+.preset.tech{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.3);color:var(--accent-blue);}
+.preset.tech.active{background:rgba(0,212,255,0.25);}
+.preset.risk{background:rgba(255,61,90,0.1);border-color:rgba(255,61,90,0.3);color:var(--bear);}
+
+/* RESULTS STATS */
+.results-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.results-count{font-size:13px;color:var(--text-secondary);}
+.results-count span{color:var(--accent-blue);font-weight:700;font-family:var(--font-mono);}
+
+/* TABLE */
+.screener-table{width:100%;border-collapse:collapse;font-size:12px;}
+.screener-table th{
+  text-align:left;padding:10px 12px;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);
+  border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;
+  background:rgba(255,255,255,0.02);
+}
+.screener-table th:hover{color:var(--accent-blue);}
+.screener-table td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,0.035);vertical-align:middle;}
+.screener-table tr:hover td{background:rgba(0,212,255,0.04);}
+
+.ticker-cell{display:flex;flex-direction:column;}
+.tc-ticker{font-family:var(--font-mono);font-weight:800;color:var(--accent-blue);font-size:13px;cursor:pointer;}
+.tc-ticker:hover{text-decoration:underline;}
+.tc-sector{font-size:10px;color:var(--text-muted);}
+
+.mono{font-family:var(--font-mono);}
+.up{color:var(--bull);} .dn{color:var(--bear);} .nu{color:var(--neutral);}
+
+.score-cell{display:flex;align-items:center;gap:6px;}
+.score-num{font-family:var(--font-mono);font-weight:800;font-size:13px;min-width:28px;}
+.score-mini-bar{width:50px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;}
+.smb-fill{height:100%;border-radius:2px;}
+
+.tag{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;}
+.tag-buy{background:rgba(0,230,118,0.15);color:var(--bull);border:1px solid rgba(0,230,118,0.3);}
+.tag-hold{background:rgba(255,184,0,0.15);color:var(--accent-gold);border:1px solid rgba(255,184,0,0.3);}
+.tag-sell{background:rgba(255,61,90,0.15);color:var(--bear);border:1px solid rgba(255,61,90,0.3);}
+.tag-accum{background:rgba(0,212,255,0.1);color:var(--accent-blue);border:1px solid rgba(0,212,255,0.25);}
+.tag-dist{background:rgba(255,61,90,0.1);color:var(--bear);border:1px solid rgba(255,61,90,0.2);}
+
+.flag-sm{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;
+  background:rgba(255,184,0,0.12);border:1px solid rgba(255,184,0,0.25);
+  border-radius:4px;font-size:9px;font-weight:700;color:var(--accent-gold);}
+
+/* DISCLAIMER */
+.disclaimer{font-size:10px;color:var(--text-muted);padding:14px 0;line-height:1.7;margin-top:20px;
+  border-top:1px solid var(--border);}
+
+@media (max-width: 768px) {
+  .header { padding: 0 12px; }
+  .main { padding: 12px; }
+  .filter-bar { gap: 8px; }
+  .filter-group { width: 100%; }
+  .filter-input, .filter-select { width: 100% !important; min-width: unset !important; }
+  .results-bar { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 700px; }
+  .preset-tabs { gap: 6px; }
+  .preset-tab { font-size: 11px; padding: 6px 10px; }
+}
+@media (max-width: 480px) {
+  .header-title { font-size: 14px; }
+  .back-btn span { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">NEXUS</div>
+  <div style="font-size:12px;color:var(--text-secondary);">
+    <a href="index.html" style="color:var(--accent-blue);text-decoration:none;">Dashboard</a> › Smart Money Screener
+  </div>
+  <div style="margin-left:auto;font-size:11px;color:var(--text-muted);">956 tickers · Update 16:00 WIB</div>
+</div>
+
+<div class="main">
+  <!-- FREE TIER NOTICE -->
+  <div id="free-notice" style="display:flex;align-items:center;gap:12px;padding:10px 16px;
+    background:rgba(255,184,0,0.08);border:1px solid rgba(255,184,0,0.25);border-radius:10px;margin-bottom:16px;">
+    <span style="font-size:16px;">🔒</span>
+    <div style="flex:1;font-size:12px;color:rgba(232,240,254,0.7);">
+      <strong style="color:#FFB800;">Akun Gratis</strong> — Hanya dapat melihat <strong style="color:#E8F0FE;">2 jenis saham</strong> (Perbankan & Energy).
+      Upgrade <strong style="color:#FFB800;">PRO</strong> untuk akses semua 11 sektor + fitur filter penuh + tanpa batas waktu.
+    </div>
+    <button onclick="window.location.href='login.html?tab=register'" style="padding:6px 14px;border-radius:6px;border:none;
+      background:linear-gradient(135deg,#FFB800,#FF8C00);color:#000;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">
+      🚀 Upgrade PRO
+    </button>
+    <span style="cursor:pointer;color:rgba(232,240,254,0.3);font-size:14px;" onclick="this.parentElement.style.display='none'">✕</span>
+  </div>
+
+  <div class="page-title">🔍 Smart Money Screener</div>
+  <div class="page-sub">Filter saham berdasarkan 6 dimensi AI scoring, capital flow, ownership, valuasi, makro, dan sinyal kuantitatif</div>
+
+  <!-- PRESET TABS -->
+  <div class="preset-tabs">
+    <span class="preset sm active" onclick="applyPreset('smart')">🧲 Smart Money</span>
+    <span class="preset val" onclick="applyPreset('value')">💎 Deep Value</span>
+    <span class="preset tech" onclick="applyPreset('growth')">📈 High Quality</span>
+    <span class="preset tech" onclick="applyPreset('foreign')">🌏 Foreign Buying</span>
+    <span class="preset val" onclick="applyPreset('commodity')">⛏️ Komoditas</span>
+    <span class="preset risk" onclick="applyPreset('risk')">⚠️ High Risk</span>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div style="background:var(--glass-bg);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-border);border-radius:var(--radius);padding:16px;margin-bottom:16px;">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <div class="filter-label">Sektor</div>
+        <select class="filter-select" id="f-sector" onchange="applyFilters()">
+          <option value="">Semua Sektor</option>
+          <option value="Perbankan">Perbankan</option>
+          <option value="Energy">Energy</option>
+          <option value="Teknologi">Teknologi</option>
+          <option value="Konsumer">Konsumer</option>
+          <option value="Properti">Properti</option>
+          <option value="Komoditas">Komoditas</option>
+          <option value="Infrastruktur">Infrastruktur</option>
+          <option value="Kesehatan">Kesehatan</option>
+          <option value="Telco">Telco</option>
+          <option value="Industri">Industri</option>
+          <option value="Media">Media</option>
+          <option value="Kimia">Kimia</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Nexus Score Min</div>
+        <input class="filter-input" type="number" id="f-score" placeholder="60" min="0" max="100" style="max-width:90px;">
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Margin of Safety</div>
+        <select class="filter-select" id="f-mos" onchange="applyFilters()">
+          <option value="">Semua</option>
+          <option value=">10%">&gt;10%</option>
+          <option value=">20%">&gt;20%</option>
+          <option value=">30%">&gt;30%</option>
+          <option value="Overvalued">Overvalued</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Capital Flow</div>
+        <select class="filter-select" id="f-flow" onchange="applyFilters()">
+          <option value="">Semua</option>
+          <option value="Foreign Net Buy">Foreign Net Buy</option>
+          <option value="Foreign Net Sell">Foreign Net Sell</option>
+          <option value="Broker Akumulasi">Broker Akumulasi</option>
+          <option value="Smart Money Signal">Smart Money Signal</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">Market Cap</div>
+        <select class="filter-select" id="f-mc" onchange="applyFilters()">
+          <option value="">Semua</option>
+          <option value="Large Cap (>10T)">Large Cap (&gt;10T)</option>
+          <option value="Mid Cap (1-10T)">Mid Cap (1-10T)</option>
+          <option value="Small Cap (<1T)">Small Cap (&lt;1T)</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">P/E Max</div>
+        <input class="filter-input" type="number" id="f-pe" placeholder="20" style="max-width:80px;">
+      </div>
+      <div class="filter-group" style="justify-content:flex-end;padding-top:18px;">
+        <div style="display:flex;gap:8px;">
+          <button class="filter-btn btn-apply" onclick="applyFilters()">Terapkan Filter</button>
+          <button class="filter-btn btn-reset" onclick="resetFilters()">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-bar">
+    <div class="results-count">Menampilkan <span id="result-count">24</span> dari 956 saham</div>
+    <div style="font-size:11px;color:var(--text-muted);">Klik header kolom untuk sort</div>
+  </div>
+
+  <!-- TABLE -->
+  <div style="background:var(--glass-bg);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-border);border-radius:var(--radius);overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="screener-table">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Harga</th>
+            <th>Chg%</th>
+            <th>Fair Value</th>
+            <th>MoS</th>
+            <th>Nexus Score ▼</th>
+            <th>Business</th>
+            <th>Valuation</th>
+            <th>P/E</th>
+            <th>P/B</th>
+            <th>ROE</th>
+            <th>Foreign Flow</th>
+            <th>Broker Signal</th>
+            <th>Smart Money</th>
+            <th>Signal</th>
+          </tr>
+        </thead>
+        <tbody id="screener-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ <strong>DISCLAIMER:</strong> Data screener bersifat informasional. Bukan rekomendasi investasi. Investasi mengandung risiko. Lakukan due diligence sebelum berinvestasi.
+  </div>
+
+</div>
+
+<script>
+const allStocks = [
+  {t:'ADRO',n:'Adaro',sector:'Energy',price:2840,chg:-0.9,fv:3200,mos:13,score:81,biz:84,val:78,pe:6.2,pb:1.1,roe:18.4,ff:'↑ Net Buy',broker:'ACCUM',sm:true,sig:'buy'},
+  {t:'DSSA',n:'Dian Swastatika',sector:'Energy',price:49500,chg:+2.2,fv:55000,mos:11,score:76,biz:78,val:72,pe:7.1,pb:1.4,roe:21.2,ff:'↑ Net Buy',broker:'ACCUM',sm:true,sig:'buy'},
+  {t:'ANTM',n:'Aneka Tambang',sector:'Komoditas',price:1680,chg:+2.4,fv:2100,mos:25,score:74,biz:72,val:82,pe:8.4,pb:0.9,roe:14.2,ff:'↑ Mild Buy',broker:'ACCUM',sm:true,sig:'buy'},
+  {t:'PTBA',n:'Bukit Asam',sector:'Energy',price:3410,chg:-2.1,fv:3750,mos:10,score:72,biz:74,val:76,pe:5.8,pb:1.6,roe:28.1,ff:'↑ Net Buy',broker:'NEUTRAL',sm:false,sig:'buy'},
+  {t:'TLKM',n:'Telkom',sector:'Telco',price:3220,chg:-0.3,fv:3800,mos:18,score:78,biz:85,val:72,pe:12.3,pb:1.8,roe:18.7,ff:'↑ Mild Buy',broker:'ACCUM',sm:false,sig:'buy'},
+  {t:'INCO',n:'Vale Indonesia',sector:'Komoditas',price:4320,chg:-0.2,fv:5200,mos:20,score:73,biz:70,val:78,pe:9.1,pb:1.2,roe:16.8,ff:'↑ Mild Buy',broker:'NEUTRAL',sm:false,sig:'buy'},
+  {t:'KLBF',n:'Kalbe Farma',sector:'Kesehatan',price:1620,chg:+1.1,fv:1900,mos:17,score:71,biz:82,val:68,pe:18.2,pb:3.1,roe:17.6,ff:'↑ Mild Buy',broker:'NEUTRAL',sm:false,sig:'buy'},
+  {t:'BBCA',n:'BCA',sector:'Perbankan',price:10925,chg:+0.8,fv:10200,mos:-7,score:78,biz:92,val:61,pe:19.4,pb:4.2,roe:23.1,ff:'↓ Net Sell',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'BMRI',n:'Bank Mandiri',sector:'Perbankan',price:5200,chg:+1.5,fv:5800,mos:12,score:75,biz:86,val:70,pe:10.2,pb:1.8,roe:21.4,ff:'↓ Mild Sell',broker:'ACCUM',sm:false,sig:'buy'},
+  {t:'BBRI',n:'BRI',sector:'Perbankan',price:4870,chg:-1.2,fv:5400,mos:11,score:74,biz:84,val:68,pe:10.8,pb:2.1,roe:19.8,ff:'↓ Net Sell',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'PGAS',n:'Gas Negara',sector:'Energy',price:1460,chg:+3.2,fv:1800,mos:23,score:70,biz:72,val:80,pe:7.4,pb:1.1,roe:15.4,ff:'↑ Net Buy',broker:'ACCUM',sm:true,sig:'buy'},
+  {t:'ASII',n:'Astra Int',sector:'Industri',price:4760,chg:+2.1,fv:5200,mos:9,score:69,biz:78,val:65,pe:9.8,pb:1.4,roe:14.2,ff:'↑ Mild Buy',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'ITMG',n:'Indo Tambangraya',sector:'Energy',price:24800,chg:+1.4,fv:26000,mos:5,score:68,biz:76,val:62,pe:4.9,pb:2.1,roe:42.8,ff:'↓ Mild Sell',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'BRPT',n:'Barito Pacific',sector:'Kimia',price:1240,chg:+1.9,fv:1500,mos:21,score:66,biz:68,val:74,pe:11.2,pb:1.6,roe:14.8,ff:'↑ Net Buy',broker:'NEUTRAL',sm:false,sig:'buy'},
+  {t:'MDKA',n:'Merdeka Copper',sector:'Komoditas',price:2180,chg:-2.5,fv:2800,mos:28,score:65,biz:66,val:80,pe:22.4,pb:2.8,roe:12.4,ff:'↓ Net Sell',broker:'DIST',sm:false,sig:'hold'},
+  {t:'CPIN',n:'Charoen Pokphand',sector:'Konsumer',price:4820,chg:+0.5,fv:5400,mos:12,score:64,biz:74,val:66,pe:14.8,pb:2.4,roe:16.2,ff:'↑ Mild Buy',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'ICBP',n:'Indofood CBP',sector:'Konsumer',price:9800,chg:+0.2,fv:10500,mos:7,score:63,biz:80,val:58,pe:17.2,pb:3.2,roe:18.9,ff:'↑ Mild Buy',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'UNVR',n:'Unilever Ind',sector:'Konsumer',price:2480,chg:-0.7,fv:2800,mos:13,score:62,biz:76,val:64,pe:22.4,pb:8.2,roe:36.8,ff:'↓ Mild Sell',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'UNTR',n:'United Tractors',sector:'Industri',price:23100,chg:+1.7,fv:24500,mos:6,score:68,biz:80,val:64,pe:8.4,pb:1.6,roe:19.2,ff:'↑ Mild Buy',broker:'NEUTRAL',sm:false,sig:'hold'},
+  {t:'HMSP',n:'HM Sampoerna',sector:'Konsumer',price:820,chg:-1.8,fv:700,mos:-15,score:42,biz:64,val:38,pe:38.2,pb:5.8,roe:15.2,ff:'↓ Net Sell',broker:'DIST',sm:false,sig:'sell'},
+  {t:'GOTO',n:'GoTo Gojek',sector:'Teknologi',price:78,chg:-3.1,fv:55,mos:-30,score:22,biz:38,val:18,pe:0,pb:1.4,roe:-12.4,ff:'↓ Net Sell',broker:'DIST',sm:false,sig:'sell'},
+  {t:'BUKA',n:'Bukalapak',sector:'Teknologi',price:142,chg:+2.8,fv:95,mos:-33,score:24,biz:34,val:16,pe:0,pb:0.9,roe:-8.2,ff:'↓ Net Sell',broker:'DIST',sm:false,sig:'sell'},
+  {t:'EMTK',n:'Elang Mahkota',sector:'Media',price:1840,chg:+0.7,fv:1600,mos:-13,score:38,biz:48,val:32,pe:24.8,pb:1.8,roe:7.4,ff:'↓ Net Sell',broker:'DIST',sm:false,sig:'sell'},
+  {t:'BSSR',n:'Baramulti',sector:'Energy',price:8200,chg:-0.3,fv:9200,mos:12,score:71,biz:72,val:74,pe:6.4,pb:1.8,roe:32.4,ff:'↑ Net Buy',broker:'ACCUM',sm:true,sig:'buy'},
+];
+
+let filteredStocks = [...allStocks];
+
+function renderTable(data) {
+  document.getElementById('result-count').textContent = data.length;
+  document.getElementById('screener-tbody').innerHTML = data.map(s=>{
+    const mosColor = s.mos>=10?'var(--bull)':s.mos>=0?'var(--accent-gold)':'var(--bear)';
+    const scoreColor = s.score>=75?'var(--bull)':s.score>=60?'var(--accent-gold)':'var(--bear)';
+    const chgColor = s.chg>=0?'up':'dn';
+    const ffColor = s.ff.includes('↑')?'up':'dn';
+    const sigClass = s.sig==='buy'?'tag-buy':s.sig==='sell'?'tag-sell':'tag-hold';
+    const brokerClass = s.broker==='ACCUM'?'tag-accum':s.broker==='DIST'?'tag-dist':'';
+    const scFill = s.score>=75?'var(--bull)':s.score>=60?'var(--accent-gold)':'var(--bear)';
+    return `<tr>
+      <td>
+        <div class="ticker-cell">
+          <span class="tc-ticker" onclick="window.location='stock.html'">${s.t} ${s.sm?'<span class="flag-sm">⚡SM</span>':''}</span>
+          <span class="tc-sector">${s.sector}</span>
+        </div>
+      </td>
+      <td class="mono">Rp ${s.price.toLocaleString()}</td>
+      <td class="mono ${chgColor}">${s.chg>0?'+':''}${s.chg}%</td>
+      <td class="mono" style="color:var(--accent-blue)">Rp ${s.fv.toLocaleString()}</td>
+      <td class="mono" style="color:${mosColor};font-weight:700;">${s.mos>0?'+':''}${s.mos}%</td>
+      <td>
+        <div class="score-cell">
+          <span class="score-num" style="color:${scoreColor}">${s.score}</span>
+          <div class="score-mini-bar"><div class="smb-fill" style="width:${s.score}%;background:${scFill};"></div></div>
+        </div>
+      </td>
+      <td class="mono" style="color:${s.biz>=75?'var(--bull)':s.biz>=60?'var(--accent-gold)':'var(--bear)'}">${s.biz}</td>
+      <td class="mono" style="color:${s.val>=75?'var(--bull)':s.val>=60?'var(--accent-gold)':'var(--bear)'}">${s.val}</td>
+      <td class="mono">${s.pe===0?'N/M':s.pe+'x'}</td>
+      <td class="mono">${s.pb}x</td>
+      <td class="mono ${s.roe>=15?'up':s.roe>=0?'nu':'dn'}">${s.roe}%</td>
+      <td class="mono ${ffColor}">${s.ff}</td>
+      <td>${s.broker!=='NEUTRAL'?`<span class="tag ${brokerClass}">${s.broker}</span>`:''}</td>
+      <td>${s.sm?'<span class="tag tag-hold" style="background:rgba(255,184,0,0.2);color:var(--accent-gold);">⚡ Aktif</span>':'-'}</td>
+      <td><span class="tag ${sigClass}">${s.sig.toUpperCase()}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function applyPreset(type) {
+  document.querySelectorAll('.preset').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  let data;
+  if(type==='smart') data = allStocks.filter(s=>s.sm || s.broker==='ACCUM');
+  else if(type==='value') data = allStocks.filter(s=>s.mos>=10 && s.score>=60);
+  else if(type==='growth') data = allStocks.filter(s=>s.biz>=75 && s.roe>=15);
