@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Market Close Summary</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg-primary:#060A12;--bg-secondary:#0B1120;--glass-bg:rgba(13,20,40,0.8);
+  --glass-border:rgba(255,255,255,0.08);--glass-blur:blur(20px);
+  --accent-blue:#00D4FF;--accent-purple:#7B2FFF;--accent-gold:#FFB800;
+  --bull:#00E676;--bear:#FF3D5A;--neutral:#607D8B;
+  --text-primary:#E8F0FE;--text-secondary:rgba(232,240,254,0.55);--text-muted:rgba(232,240,254,0.3);
+  --border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px;
+  --font-mono:'JetBrains Mono','Roboto Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.3);border-radius:2px;}
+
+.topbar{background:rgba(6,10,18,0.95);backdrop-filter:var(--glass-blur);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 20px;height:56px;position:sticky;top:0;z-index:100;}
+.logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+
+.main{padding:24px;max-width:1200px;margin:0 auto;}
+
+/* HEADER */
+.summary-header{text-align:center;margin-bottom:32px;}
+.sh-date{font-size:12px;color:var(--accent-blue);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.sh-title{font-size:28px;font-weight:900;margin-bottom:6px;}
+.sh-ai{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+  border-radius:20px;background:rgba(123,47,255,0.2);border:1px solid rgba(123,47,255,0.4);
+  font-size:11px;color:#B57BFF;font-weight:700;margin-top:6px;}
+
+/* GRID */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+.summary-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.summary-grid-full{margin-bottom:16px;}
+
+/* SECTION CARD */
+.section-card{background:var(--glass-bg);backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-border);border-radius:var(--radius);overflow:hidden;}
+
+.sc-header{padding:14px 18px 10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;}
+.sc-icon{font-size:16px;}
+.sc-title{font-size:13px;font-weight:800;color:var(--text-primary);}
+.sc-badge{margin-left:auto;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+.badge-green{background:rgba(0,230,118,0.15);color:var(--bull);}
+.badge-red{background:rgba(255,61,90,0.15);color:var(--bear);}
+.badge-yellow{background:rgba(255,184,0,0.15);color:var(--accent-gold);}
+.badge-blue{background:rgba(0,212,255,0.15);color:var(--accent-blue);}
+
+.sc-body{padding:16px 18px;}
+
+/* DATA ROWS */
+.dr{display:flex;justify-content:space-between;align-items:center;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;}
+.dr:last-child{border:none;}
+.dk{color:var(--text-secondary);}
+.dv{font-family:var(--font-mono);font-weight:600;}
+.dv.up{color:var(--bull);} .dv.dn{color:var(--bear);} .dv.nu{color:var(--neutral);}
+
+/* INDEX DISPLAY */
+.index-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;}
+.index-item{flex:1;min-width:120px;padding:12px 14px;
+  background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border);}
+.ii-name{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;}
+.ii-val{font-family:var(--font-mono);font-size:20px;font-weight:800;margin-top:4px;}
+.ii-chg{font-family:var(--font-mono);font-size:12px;margin-top:2px;}
+
+/* SECTOR BARS */
+.sector-bars{display:flex;flex-direction:column;gap:7px;}
+.sb-row{display:flex;align-items:center;gap:8px;font-size:12px;}
+.sb-name{min-width:110px;color:var(--text-secondary);}
+.sb-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+.sb-fill{height:100%;border-radius:3px;transition:width 0.8s;}
+.sb-val{min-width:52px;text-align:right;font-family:var(--font-mono);font-size:11px;font-weight:700;}
+
+/* FLOW BARS */
+.flow-vis{margin-top:10px;}
+.fv-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;}
+.fv-label{min-width:120px;color:var(--text-secondary);}
+.fv-bar-container{flex:1;position:relative;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden;}
+.fv-bar-pos{position:absolute;top:0;right:50%;height:100%;border-radius:5px 0 0 5px;background:rgba(0,230,118,0.7);}
+.fv-bar-neg{position:absolute;top:0;left:50%;height:100%;border-radius:0 5px 5px 0;background:rgba(255,61,90,0.7);}
+.fv-center{position:absolute;top:0;left:50%;width:1px;height:100%;background:rgba(255,255,255,0.2);}
+.fv-val{min-width:80px;text-align:right;font-family:var(--font-mono);font-size:11px;font-weight:700;}
+
+/* RISK ALERTS */
+.risk-list{display:flex;flex-direction:column;gap:8px;}
+.risk-item{display:flex;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid;}
+.risk-item.danger{background:rgba(255,61,90,0.06);border-color:rgba(255,61,90,0.25);}
+.risk-item.warn{background:rgba(255,184,0,0.06);border-color:rgba(255,184,0,0.25);}
+.risk-item.info{background:rgba(0,212,255,0.06);border-color:rgba(0,212,255,0.25);}
+.risk-item.ok{background:rgba(0,230,118,0.06);border-color:rgba(0,230,118,0.25);}
+.ri-icon{font-size:16px;flex-shrink:0;}
+.ri-type{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;}
+.ri-text{font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.5;}
+.ri-type.danger{color:var(--bear);}
+.ri-type.warn{color:var(--accent-gold);}
+.ri-type.info{color:var(--accent-blue);}
+.ri-type.ok{color:var(--bull);}
+
+/* OUTLOOK */
+.outlook-big{padding:20px;border-radius:var(--radius);border:2px solid;margin-bottom:16px;position:relative;overflow:hidden;}
+.outlook-big.bearish{background:rgba(255,61,90,0.06);border-color:rgba(255,61,90,0.3);}
+.ob-tag{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.ob-main{font-size:24px;font-weight:900;margin-bottom:6px;}
+.ob-prob{font-size:13px;color:var(--text-secondary);}
+.ob-range{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;}
+.ob-item{font-size:12px;padding:6px 12px;background:rgba(255,255,255,0.05);border-radius:6px;}
+.ob-item span{font-family:var(--font-mono);font-weight:700;color:var(--text-primary);}
+
+/* PROBABILITY BARS */
+.prob-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;}
+.pr-label{min-width:80px;font-weight:600;}
+.pr-bar{flex:1;height:8px;border-radius:4px;overflow:hidden;}
+.pr-fill{height:100%;border-radius:4px;}
+.pr-pct{min-width:40px;text-align:right;font-family:var(--font-mono);font-weight:700;font-size:12px;}
+
+/* WATCH LIST */
+.watch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.watch-item{padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:var(--radius-sm);text-align:center;}
+.wi-ticker{font-family:var(--font-mono);font-weight:800;font-size:14px;color:var(--accent-blue);}
+.wi-reason{font-size:10px;color:var(--text-secondary);margin-top:3px;line-height:1.4;}
+.wi-signal{font-size:10px;font-weight:700;margin-top:5px;padding:2px 6px;border-radius:3px;display:inline-block;}
+
+/* DISCLAIMER */
+.disclaimer{background:rgba(255,184,0,0.05);border:1px solid rgba(255,184,0,0.2);
+  border-radius:var(--radius-sm);padding:14px 18px;margin-top:20px;
+  font-size:11px;color:var(--text-secondary);line-height:1.7;}
+
+@media (max-width: 768px) {
+  .header { padding: 0 12px; }
+  .main { padding: 12px; }
+  .summary-grid { grid-template-columns: 1fr !important; }
+  .summary-grid-2 { grid-template-columns: 1fr !important; }
+  .index-row { gap: 8px; }
+  .index-item { min-width: calc(50% - 4px); flex: none; }
+  .card { padding: 14px !important; }
+}
+@media (max-width: 480px) {
+  .index-item { min-width: 100%; }
+  .sh-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">NEXUS</div>
+  <div style="font-size:12px;color:var(--text-secondary);">
+    <a href="index.html" style="color:var(--accent-blue);text-decoration:none;">Dashboard</a> › Market Close Summary
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+    <span style="font-size:11px;color:var(--text-muted);">Auto-generated 16:15 WIB</span>
+    <button style="padding:5px 12px;border-radius:6px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:var(--accent-blue);font-size:12px;cursor:pointer;">📤 Bagikan</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- HEADER -->
+  <div class="summary-header">
+    <div class="sh-date">Sabtu, 31 Mei 2026 · 16:00 WIB</div>
+    <div class="sh-title">📊 Market Close Summary</div>
+    <div class="sh-ai">📋 Dianalisa dari IDX, KSEI, BEI Broker Data, Makro Global · 31 Mei 2026</div>
+  </div>
+
+  <!-- 1. MARKET SUMMARY -->
+  <div class="summary-grid-full">
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-icon">📈</span>
+        <span class="sc-title">1. Market Summary</span>
+        <span class="sc-badge badge-red">Melemah</span>
+      </div>
+      <div class="sc-body">
+        <div class="index-row">
+          <div class="index-item">
+            <div class="ii-name">IHSG</div>
+            <div class="ii-val" style="color:var(--bear)">7.234</div>
+            <div class="ii-chg" style="color:var(--bear)">▼ -30,5 (-0,42%)</div>
+          </div>
+          <div class="index-item">
+            <div class="ii-name">LQ45</div>
+            <div class="ii-val" style="color:var(--bear)">892,4</div>
+            <div class="ii-chg" style="color:var(--bear)">▼ -2,8 (-0,31%)</div>
+          </div>
+          <div class="index-item">
+            <div class="ii-name">IDX80</div>
+            <div class="ii-val" style="color:var(--bear)">467,1</div>
+            <div class="ii-chg" style="color:var(--bear)">▼ -1,8 (-0,38%)</div>
+          </div>
+          <div class="index-item">
+            <div class="ii-name">IDX30</div>
+            <div class="ii-val" style="color:var(--bear)">504,2</div>
+            <div class="ii-chg" style="color:var(--bear)">▼ -2,1 (-0,41%)</div>
+          </div>
+          <div class="index-item">
+            <div class="ii-name">Volume Transaksi</div>
+            <div class="ii-val" style="color:var(--accent-blue);font-size:16px">Rp12,3T</div>
+            <div class="ii-chg" style="color:var(--bear)">▼ -8% vs 30 hari avg</div>
+          </div>
+          <div class="index-item">
+            <div class="ii-name">A/D Ratio</div>
+            <div class="ii-val" style="color:var(--accent-gold);font-size:15px">218/312</div>
+            <div class="ii-chg" style="color:var(--text-muted)">156 flat</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+          <div>
+            <div style="font-size:11px;color:var(--bull);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Sektor Terbaik 🟢</div>
+            <div class="sector-bars" id="sector-best"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--bear);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Sektor Terburuk 🔴</div>
+            <div class="sector-bars" id="sector-worst"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY NARRATIVE -->
+  <div class="summary-grid-full" style="margin-bottom:16px;">
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-icon">📝</span>
+        <span class="sc-title">Ringkasan Eksekutif — 31 Mei 2026</span>
+        <span class="sc-badge badge-yellow">Senin, 1 Juni waspada</span>
+      </div>
+      <div class="sc-body" style="display:flex;flex-direction:column;gap:10px;">
+        <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);">
+          IHSG ditutup melemah <strong style="color:var(--bear)">-0,42% ke 7.234</strong> pada perdagangan Jumat, 31 Mei 2026, dibayangi tekanan net sell asing sebesar <strong style="color:var(--bear)">Rp 420 Miliar</strong> yang dipicu penguatan Dollar Index (DXY) ke level 104.2. Volume transaksi <strong style="color:var(--text-primary)">Rp 12,3 Triliun</strong> — turun 8% di bawah rata-rata 30 hari, mengindikasikan absennya conviction beli dari pelaku institusional besar.
+        </p>
+        <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);">
+          Satu-satunya penopang pasar adalah <strong style="color:var(--bull)">sektor Energy (+1,8%)</strong>, didorong reli harga Coal Newcastle <strong style="color:var(--bull)">+3,1% ke $132/ton</strong>. Emiten batubara ADRO, ITMG, dan PTBA menjadi penerima manfaat utama dengan volume akumulasi asing positif. Sebaliknya, sektor <strong style="color:var(--bear)">Teknologi (-2,1%)</strong> dan <strong style="color:var(--bear)">Perbankan (-0,9%)</strong> menjadi sektor dengan tekanan terbesar — Perbankan tertekan oleh ekspektasi BI Rate bertahan di 5,75% yang menekan Net Interest Margin.
+        </p>
+        <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);">
+          Sinyal <strong style="color:var(--accent-gold)">Smart Money</strong> terdeteksi kuat di <strong style="color:var(--accent-blue)">DSSA</strong> — accumulation score 82/100 dengan broker A, C, dan E membeli tiga hari berturut. <strong style="color:var(--accent-blue)">ADRO</strong> juga menunjukkan pola serupa dengan akumulasi asing selama 5 hari beruntun. Distribusi terkonsentrasi di <strong style="color:var(--bear)">EMTK</strong> (net sell asing 4 hari) dan <strong style="color:var(--bear)">BBCA</strong> (foreign net sell Rp 210M).
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+          <div style="padding:8px 14px;background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);border-radius:8px;font-size:12px;">
+            <span style="color:var(--bear);font-weight:700;">🐻 Outlook Senin: BEARISH BIAS 60%</span>
+            <div style="color:var(--text-secondary);margin-top:2px;">Range IHSG: 7.180 – 7.280 · Pivot: 7.220</div>
+          </div>
+          <div style="padding:8px 14px;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:8px;font-size:12px;">
+            <span style="color:var(--bull);font-weight:700;">✅ Top Pick: ADRO, PTBA, ANTM</span>
+            <div style="color:var(--text-secondary);margin-top:2px;">Coal rally + undervalued + asing masuk</div>
+          </div>
+          <div style="padding:8px 14px;background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);border-radius:8px;font-size:12px;">
+            <span style="color:var(--bear);font-weight:700;">❌ Hindari: GOTO, BUKA, EMTK</span>
+            <div style="color:var(--text-secondary);margin-top:2px;">Distribusi, overvalued, fundamental lemah</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. CAPITAL FLOW & 3. ECONOMIC CONTEXT -->
+  <div class="summary-grid-2">
+
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-icon">💰</span>
+        <span class="sc-title">2. Capital Flow</span>
+        <span class="sc-badge badge-red">Net Sell Asing</span>
+      </div>
+      <div class="sc-body">
+        <div class="dr"><span class="dk">Foreign Net</span><span class="dv dn">-Rp 420 M</span></div>
+        <div class="dr"><span class="dk">Domestic Net</span><span class="dv up">+Rp 380 M</span></div>
+        <div class="dr"><span class="dk">Reksa Dana</span><span class="dv up">+Rp 180 M</span></div>
+        <div class="dr"><span class="dk">Retail Lokal</span><span class="dv up">+Rp 200 M</span></div>
+        <div class="dr"><span class="dk">Broker Asing</span><span class="dv dn">-Rp 290 M</span></div>
+
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Top Foreign BUY</div>
+          <div class="dr"><span class="dk" style="color:var(--text-primary)">ADRO</span><span class="dv up">+Rp 85M</span></div>
+          <div class="dr"><span class="dk" style="color:var(--text-primary)">PTBA</span><span class="dv up">+Rp 72M</span></div>
+          <div class="dr"><span class="dk" style="color:var(--text-primary)">DSSA</span><span class="dv up">+Rp 54M</span></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Top Foreign SELL</div>
+          <div class="dr"><span class="dk" style="color:var(--text-primary)">BBCA</span><span class="dv dn">-Rp 210M</span></div>
+          <div class="dr"><span class="dk" style="color:var(--text-primary)">BMRI</span><span class="dv dn">-Rp 95M</span></div>
+          <div class="dr"><span class="dk" style="color:var(--text-primary)">EMTK</span><span class="dv dn">-Rp 82M</span></div>
+        </div>
+
+        <div style="margin-top:14px;height:120px;">
+          <canvas id="flow-5day"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-icon">🌐</span>
+        <span class="sc-title">3. Economic Context</span>
+        <span class="sc-badge badge-yellow">Mixed Signal</span>
+      </div>
+      <div class="sc-body">
+        <div style="font-size:11px;color:var(--accent-blue);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Dampak Suku Bunga</div>
+        <div class="dr"><span class="dk">BI Rate</span><span class="dv">5.75% (hold)</span></div>
+        <div class="dr"><span class="dk">Efek ke Bank</span><span class="dv dn">NIM tertekan</span></div>
+        <div class="dr"><span class="dk">Efek ke Properti</span><span class="dv dn">KPR mahal</span></div>
+        <div class="dr"><span class="dk">FED Rate</span><span class="dv">5.50% (hold)</span></div>
+        <div class="dr"><span class="dk">USD/IDR</span><span class="dv dn">Rp 15.420 (-0,3%)</span></div>
+
+        <div style="font-size:11px;color:var(--accent-gold);font-weight:700;margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.6px;">Dampak Komoditas</div>
+        <div class="dr"><span class="dk">Coal Newcastle</span><span class="dv up">$132 (+3,1%)</span></div>
+        <div class="dr"><span class="dk">Impak ADRO/ITMG</span><span class="dv up">Positif kuat</span></div>
+        <div class="dr"><span class="dk">Gold</span><span class="dv up">$2.345 (+0,8%)</span></div>
+        <div class="dr"><span class="dk">Impak ANTM/MDKA</span><span class="dv up">Positif</span></div>
+        <div class="dr"><span class="dk">CPO</span><span class="dv up">Rp3.820 (+1,8%)</span></div>
+
+        <div style="font-size:11px;color:var(--neutral);font-weight:700;margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.6px;">Global Market</div>
+        <div class="dr"><span class="dk">S&P 500</span><span class="dv nu">Flat -0,1%</span></div>
+        <div class="dr"><span class="dk">HSI (Hong Kong)</span><span class="dv dn">-0,8%</span></div>
+        <div class="dr"><span class="dk">Nikkei 225</span><span class="dv up">+0,4%</span></div>
+        <div class="dr"><span class="dk">Sentimen EM Asia</span><span class="dv nu">Netral</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 4. RISK ALERT -->
+  <div class="summary-grid-full">
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-icon">⚠️</span>
+        <span class="sc-title">4. Risk Alert</span>
+        <span class="sc-badge badge-red">4 Aktif</span>
+      </div>
+      <div class="sc-body">
+        <div class="risk-list">
+          <div class="risk-item danger">
+            <span class="ri-icon">📉</span>
+            <div>
+              <div class="ri-type danger">Overvalued</div>
+              <div class="ri-text"><strong style="color:var(--text-primary)">GOTO</strong> — P/S 8x dengan cash burn masih negatif. Model bisnis belum menghasilkan free cash flow. <strong style="color:var(--text-primary)">BUKA</strong> — valuasi tidak didukung fundamental. Risiko tinggi posisi long.</div>
+            </div>
+          </div>
+          <div class="risk-item ok">
+            <span class="ri-icon">💎</span>
+            <div>
+              <div class="ri-type ok">Undervalued</div>
+              <div class="ri-text"><strong style="color:var(--text-primary)">TLKM</strong> P/E 12,3x (diskon 18% vs historis). <strong style="color:var(--text-primary)">ANTM</strong> P/B 0,9x dengan gold rally. <strong style="color:var(--text-primary)">PTBA</strong> dividend yield 8,4% + coal momentum.</div>
+            </div>
+          </div>
+          <div class="risk-item warn">
+            <span class="ri-icon">⚡</span>
+            <div>
+              <div class="ri-type warn">Unusual Accumulation</div>
+              <div class="ri-text"><strong style="color:var(--text-primary)">DSSA</strong> — broker A, C, E beli berturut-turut 3 hari. Volume +180% avg. Accumulation score 82/100. Watch list prioritas. <strong style="color:var(--text-primary)">ADRO</strong> — foreign net buy 5 hari berturut, coal rally support.</div>
+            </div>
+          </div>
+          <div class="risk-item info">
+            <span class="ri-icon">🔄</span>
+            <div>
+              <div class="ri-type info">Unusual Distribution</div>
+              <div class="ri-text"><strong style="color:var(--text-primary)">EMTK</strong> — asing net sell 4 hari berturut. Broker lokal ikut distribusi. Volume distribusi +220% rata-rata. Waspada breakdown support.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. NEXT DAY OUTLOOK -->
+  <div class="summary-grid-full">
+    <div class="section-card">
+      <div class="sc-header">
+        <span class="sc-icon">🔮</span>
+        <span class="sc-title">5. Next Day Outlook — Senin 1 Juni 2026</span>
+        <span class="sc-badge badge-red">Bearish Bias</span>
+      </div>
+      <div class="sc-body">
+
+        <div class="outlook-big bearish">
+          <div class="ob-tag" style="color:var(--bear)">🐻 Arah Utama: BEARISH</div>
+          <div class="ob-main" style="color:var(--bear)">60% Probabilitas Turun</div>
+          <div class="ob-prob" style="color:var(--text-secondary)">Berdasarkan: asing net sell 3 hari, rupiah lemah, global pasar mixed, DXY kuat</div>
+          <div class="ob-range">
+            <div class="ob-item">Range IHSG: <span>7.180 – 7.280</span></div>
+            <div class="ob-item">Pivot: <span>7.220</span></div>
+            <div class="ob-item">Support: <span>7.180</span></div>
+            <div class="ob-item">Resist: <span>7.290</span></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Distribusi Probabilitas</div>
+            <div class="prob-row">
+              <span class="pr-label" style="color:var(--bear)">🐻 Bearish</span>
+              <div class="pr-bar"><div class="pr-fill" style="width:60%;background:var(--bear);"></div></div>
+              <span class="pr-pct" style="color:var(--bear)">60%</span>
+            </div>
+            <div class="prob-row">
+              <span class="pr-label" style="color:var(--neutral)">↔ Neutral</span>
+              <div class="pr-bar"><div class="pr-fill" style="width:25%;background:var(--neutral);"></div></div>
+              <span class="pr-pct" style="color:var(--neutral)">25%</span>
+            </div>
+            <div class="prob-row">
+              <span class="pr-label" style="color:var(--bull)">🐂 Bullish</span>
+              <div class="pr-bar"><div class="pr-fill" style="width:15%;background:var(--bull);"></div></div>
+              <span class="pr-pct" style="color:var(--bull)">15%</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Trigger Pembalik Arah</div>
+            <div class="dr"><span class="dk">Bullish reversal jika</span><span class="dv up">IHSG > 7.290</span></div>
+            <div class="dr"><span class="dk">Bearish lanjut jika</span><span class="dv dn">IHSG < 7.180</span></div>
+            <div class="dr"><span class="dk">Katalis positif</span><span class="dv up">FED dovish signal</span></div>
+            <div class="dr"><span class="dk">Katalis negatif</span><span class="dv dn">Rupiah > 15.500</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Saham & Sektor Fokus</div>
+          
