@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Ownership Intelligence & 3D Galaxy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+:root {
+  --bg-primary:#060A12;--bg-secondary:#0B1120;--glass-bg:rgba(13,20,40,0.8);
+  --glass-border:rgba(255,255,255,0.08);--glass-blur:blur(20px);
+  --accent-blue:#00D4FF;--accent-purple:#7B2FFF;--accent-gold:#FFB800;
+  --bull:#00E676;--bear:#FF3D5A;--neutral:#607D8B;
+  --text-primary:#E8F0FE;--text-secondary:rgba(232,240,254,0.55);--text-muted:rgba(232,240,254,0.3);
+  --border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px;
+  --font-mono:'JetBrains Mono','Roboto Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.3);border-radius:2px;}
+
+.topbar{background:rgba(6,10,18,0.95);backdrop-filter:var(--glass-blur);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 20px;height:56px;position:sticky;top:0;z-index:100;}
+.logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.search-bar{flex:1;max-width:400px;position:relative;}
+.search-bar input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:8px;padding:8px 14px 8px 36px;color:var(--text-primary);font-size:13px;outline:none;}
+.search-bar input:focus{border-color:var(--accent-blue);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;}
+
+.main-layout{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 56px);overflow:hidden;}
+.page-body{overflow-y:auto;}
+
+/* 3D GALAXY */
+#galaxy-canvas{width:100%;height:100%;display:block;}
+.galaxy-overlay{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;}
+.galaxy-title{position:absolute;top:20px;left:20px;
+  font-size:14px;font-weight:700;color:var(--text-primary);}
+.galaxy-subtitle{font-size:11px;color:var(--text-muted);margin-top:3px;}
+.galaxy-legend{position:absolute;bottom:20px;left:20px;
+  display:flex;flex-direction:column;gap:6px;}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-secondary);}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.galaxy-hint{position:absolute;top:20px;right:20px;
+  font-size:11px;color:var(--text-muted);
+  background:rgba(0,0,0,0.5);padding:6px 10px;border-radius:6px;}
+
+/* TOOLTIP */
+.galaxy-tooltip{position:absolute;pointer-events:none;display:none;
+  background:rgba(11,17,32,0.95);border:1px solid var(--glass-border);
+  border-radius:10px;padding:12px 14px;font-size:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:100;}
+.tt-ticker{font-family:var(--font-mono);font-size:15px;font-weight:800;color:var(--accent-blue);}
+.tt-name{color:var(--text-secondary);font-size:11px;margin-top:2px;}
+.tt-row{display:flex;justify-content:space-between;gap:20px;margin-top:6px;font-size:11px;}
+.tt-key{color:var(--text-muted);}
+.tt-val{font-family:var(--font-mono);font-weight:600;}
+
+/* SIDE PANEL */
+.side-panel{background:var(--bg-secondary);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;}
+.panel-section{padding:16px;border-bottom:1px solid var(--border);}
+.panel-title{font-size:12px;font-weight:700;color:var(--text-primary);
+  display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+
+/* CONGLOMERATE LIST */
+.cong-item{display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s;margin-bottom:4px;}
+.cong-item:hover{background:rgba(0,212,255,0.08);}
+.cong-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.cong-name{font-size:13px;color:var(--text-primary);}
+.cong-count{font-size:11px;color:var(--text-muted);}
+.cong-tickers{font-size:10px;color:var(--text-secondary);margin-top:2px;}
+
+/* FLOAT TABLE */
+.float-table{width:100%;border-collapse:collapse;font-size:11px;}
+.float-table th{padding:6px 8px;text-align:left;font-size:9px;font-weight:700;
+  color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);}
+.float-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.float-table tr:hover td{background:rgba(255,255,255,0.02);}
+.float-badge{padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;}
+.float-badge.low{background:rgba(255,61,90,0.15);color:var(--bear);}
+.float-badge.mid{background:rgba(255,184,0,0.15);color:var(--accent-gold);}
+.float-badge.high{background:rgba(0,230,118,0.15);color:var(--bull);}
+
+/* CONGLOMERATE DETAIL PANEL */
+.cong-detail{display:none;margin-top:8px;padding:12px;
+  background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);
+  border-radius:var(--radius-sm);animation:fadeIn 0.2s ease;}
+.cong-detail.open{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.cd-header{font-size:13px;font-weight:800;color:var(--accent-blue);margin-bottom:8px;}
+.cd-row{display:flex;justify-content:space-between;padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;}
+.cd-row:last-child{border:none;}
+.cd-key{color:var(--text-muted);}
+.cd-val{color:var(--text-primary);font-weight:600;font-family:var(--font-mono);}
+.cd-tickers{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;}
+.cd-ticker{padding:2px 7px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);
+  border-radius:4px;font-size:10px;font-weight:700;color:var(--accent-blue);cursor:pointer;}
+.cd-ticker:hover{background:rgba(0,212,255,0.2);}
+
+/* FLOAT SCREENER SECTION (standalone) */
+.float-section{padding:20px;background:var(--bg-secondary);border-top:1px solid var(--border);}
+.float-section-title{font-size:14px;font-weight:800;color:var(--text-primary);
+  display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.float-section-sub{font-size:11px;color:var(--text-muted);margin-bottom:16px;}
+.float-full-table{width:100%;border-collapse:collapse;font-size:12px;}
+.float-full-table th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;
+  color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;
+  border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.float-full-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.035);vertical-align:middle;}
+.float-full-table tr:hover td{background:rgba(0,212,255,0.03);}
+
+/* ACCUMULATION SCORE WIDGET */
+.score-widget{background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
+.sw-title{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
+.sw-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.sw-ticker{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--accent-blue);min-width:45px;}
+.sw-bar{flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;}
+.sw-fill{height:100%;border-radius:2px;}
+.sw-val{font-family:var(--font-mono);font-size:11px;font-weight:700;min-width:28px;text-align:right;}
+
+.disclaimer{font-size:10px;color:var(--text-muted);padding:12px 16px;line-height:1.6;}
+.tier-banner{position:fixed;bottom:0;left:0;right:0;z-index:500;
+  background:linear-gradient(90deg,rgba(6,10,18,0.98),rgba(11,17,32,0.98));
+  border-top:1px solid rgba(255,184,0,0.3);padding:10px 20px;
+  display:flex;align-items:center;gap:16px;backdrop-filter:blur(20px);}
+.tier-badge{padding:3px 10px;border-radius:20px;background:rgba(255,184,0,0.15);
+  border:1px solid rgba(255,184,0,0.4);font-size:10px;font-weight:800;color:#FFB800;
+  text-transform:uppercase;letter-spacing:0.6px;}
+.tier-countdown{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+  color:#FF3D5A;min-width:80px;text-align:center;}
+.free-lock{padding:10px;background:rgba(255,184,0,0.08);border:1px dashed rgba(255,184,0,0.3);
+  border-radius:6px;text-align:center;font-size:11px;color:#FFB800;cursor:pointer;
+  margin-top:4px;}
+
+@media (max-width: 768px) {
+  .header { padding: 0 12px; gap: 8px; }
+  .search-bar { max-width: 100% !important; }
+  .main-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 60vw 1fr !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  #galaxy-canvas { width: 100%; }
+  .side-panel {
+    height: auto !important;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .tt-row { flex-direction: column; gap: 6px; }
+}
+@media (max-width: 480px) {
+  .main-layout { grid-template-rows: 50vw 1fr !important; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">NEXUS</div>
+  <div style="font-size:12px;color:var(--text-secondary);">
+    <a href="index.html" style="color:var(--accent-blue);text-decoration:none;">Dashboard</a> › Ownership Intelligence
+  </div>
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" placeholder="Cari ticker atau investor... (BBCA, Lo Kheng Hong, Salim)" id="search-input">
+  </div>
+  <div style="margin-left:auto;font-size:11px;color:var(--text-muted);">Data KSEI 30 Apr 2026 · 956 Tickers</div>
+</div>
+
+<div class="main-layout">
+
+  <!-- 3D GALAXY CANVAS + Float Screener below -->
+  <div class="page-body" style="display:flex;flex-direction:column;">
+  <div style="position:relative;overflow:hidden;flex-shrink:0;height:calc(100vh - 56px);">
+    <canvas id="galaxy-canvas"></canvas>
+    <div class="galaxy-overlay">
+      <div style="position:absolute;top:20px;left:20px;">
+        <div class="galaxy-title">🌌 Conglomerate Galaxy Map</div>
+        <div class="galaxy-subtitle">Setiap bintang = 1 saham IDX · Ukuran = Market Cap · Warna = Konglomerat</div>
+      </div>
+      <div class="galaxy-hint">Drag untuk rotasi · Scroll untuk zoom · Hover untuk detail</div>
+      <div class="galaxy-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#FF6B6B;"></div>Salim Group (14 tickers)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4ECDC4;"></div>Djarum Group (10 tickers)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FFE66D;"></div>Sinar Mas Group (12 tickers)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#A8E6CF;"></div>Astra Group (8 tickers)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#DDA0DD;"></div>Bakrie Group (11 tickers)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#87CEEB;"></div>Independen / BUMN</div>
+      </div>
+    </div>
+    <div class="galaxy-tooltip" id="tooltip">
+      <div class="tt-ticker" id="tt-ticker"></div>
+      <div class="tt-name" id="tt-name"></div>
+      <div class="tt-row"><span class="tt-key">Harga</span><span class="tt-val" id="tt-price"></span></div>
+      <div class="tt-row"><span class="tt-key">Market Cap</span><span class="tt-val" id="tt-mc"></span></div>
+      <div class="tt-row"><span class="tt-key">Top Holder</span><span class="tt-val" id="tt-holder"></span></div>
+      <div class="tt-row"><span class="tt-key">Free Float</span><span class="tt-val" id="tt-float"></span></div>
+    </div>
+  </div>
+
+  <!-- ═══ FLOAT SCREENER — STANDALONE SECTION ═══ -->
+  <div class="float-section">
+    <div class="float-section-title">🌏 Float Screener — Analisis Free Float IDX</div>
+    <div class="float-section-sub">Pemantauan konsentrasi kepemilikan & risiko likuiditas · Data KSEI 30 Apr 2026 · 956 Tickers</div>
+
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <select style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:12px;outline:none;" id="float-filter" onchange="filterFloatTable()">
+        <option value="">Semua Kategori</option>
+        <option value="low">Low Float (&lt;20%)</option>
+        <option value="mid">Mid Float (20-50%)</option>
+        <option value="high">High Float (&gt;50%)</option>
+      </select>
+      <select style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:12px;outline:none;" id="float-sector" onchange="filterFloatTable()">
+        <option value="">Semua Sektor</option>
+        <option>Perbankan</option><option>Energy</option><option>Komoditas</option>
+        <option>Teknologi</option><option>Telco</option><option>Industri</option>
+      </select>
+      <div style="margin-left:auto;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+        <span style="width:8px;height:8px;background:var(--bear);border-radius:50%;display:inline-block;"></span>Low Float (Risiko Tinggi)
+        <span style="width:8px;height:8px;background:var(--accent-gold);border-radius:50%;display:inline-block;margin-left:8px;"></span>Mid Float
+        <span style="width:8px;height:8px;background:var(--bull);border-radius:50%;display:inline-block;margin-left:8px;"></span>High Float (Likuid)
+      </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="float-full-table">
+        <thead><tr>
+          <th>Ticker</th><th>Nama Perusahaan</th><th>Sektor</th>
+          <th>Top Pemegang</th><th>Kepemilikan (%)</th><th>Free Float</th>
+          <th>Market Cap</th><th>Risiko Float</th><th>Likuiditas Harian</th>
+        </tr></thead>
+        <tbody id="float-full-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  </div><!-- end page-body -->
+
+  <!-- SIDE PANEL -->
+  <div class="side-panel">
+
+    <!-- Konglomerat -->
+    <div class="panel-section">
+      <div class="panel-title">🏢 18 Konglomerat IDX</div>
+      <div id="cong-list"></div>
+    </div>
+
+    <!-- Accumulation Score -->
+    <div class="panel-section">
+      <div class="panel-title">🧲 Accumulation Score (5 Hari)</div>
+      <div id="accum-scores"></div>
+    </div>
+
+    <!-- Conglomerate Detail Panel -->
+    <div class="panel-section" id="cong-detail-section" style="display:none;">
+      <div class="panel-title" id="cong-detail-name">📊 Detail Konglomerat</div>
+      <div id="cong-detail-content"></div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+      ⚠️ Data KSEI menampilkan pemegang saham ≥1%. Informasi ini bersifat informasional semata, bukan rekomendasi investasi. Selalu lakukan riset mandiri.
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── DATA ── */
+const conglomerates = [
+  {name:'Salim Group', count:14, color:'#FF6B6B', tickers:'ICBP, INDF, BTPN, MLBI, INDP, SIMP...'},
+  {name:'Sinar Mas Group', count:12, color:'#FFE66D', tickers:'SMGR, BNLI, SMAR, PALM, APP...'},
+  {name:'Lippo Group', count:12, color:'#98D8C8', tickers:'LPKR, APLN, CIMB, LPGI, MLPL...'},
+  {name:'Bakrie Group', count:11, color:'#DDA0DD', tickers:'BUMI, UNSP, ENRG, BNBR, BTEL...'},
+  {name:'Djarum / BCA Group', count:10, color:'#4ECDC4', tickers:'BBCA, HMSP, UNVR, DOID...'},
+  {name:'Astra Group', count:8, color:'#A8E6CF', tickers:'ASII, AALI, UNTR, TBLA, ACST...'},
+  {name:'Prajogo Pangestu', count:7, color:'#FF9F7F', tickers:'BRPT, TPIA, PBSA, BCIP...'},
+  {name:'Danantara / BUMN', count:12, color:'#87CEEB', tickers:'BBRI, BMRI, TLKM, PTBA, ANTM...'},
+  {name:'Hary Tanoesoedibjo', count:5, color:'#F7B7A3', tickers:'MNCN, BHIT, RCTI, MNC...'},
+  {name:'Chairul Tanjung CT Corp', count:6, color:'#B5EAD7', tickers:'ACES, MAPI, TRANS...'},
+  {name:'Tahir Group', count:4, color:'#FFDAC1', tickers:'MPMX, BCIP, APIC, BTEK'},
+  {name:'Edwin Soeryadjaya', count:5, color:'#C7CEEA', tickers:'UNTR, SGER, GEMS, DSSA...'},
+  {name:'Garibaldi Thohir', count:6, color:'#E2F0CB', tickers:'DSSA, ADRO, BSSR, PTRO...'},
+  {name:'Widjaja Family', count:8, color:'#FFB7B2', tickers:'SMAR, PALM, INKP, TKIM...'},
+  {name:'Djoko Susanto', count:3, color:'#FF9AA2', tickers:'AMRT, MIDI, SMPC'},
+  {name:'Anthony Salim', count:4, color:'#E8A87C', tickers:'INDF, ICBP, SIMP, AALI'},
+  {name:'Peter Sondakh', count:3, color:'#85C1E9', tickers:'RAJA, BSRT, RICY'},
+  {name:'Lo Kheng Hong (Individu)', count:16, color:'#82E0AA', tickers:'CFIN, ADMG, MAIN, PNIN, LSIP...'},
+];
+
+const accumScores = [
+  {t:'DSSA',s:82,c:'var(--bull)'},{t:'ADRO',s:78,c:'var(--bull)'},
+  {t:'INCO',s:74,c:'var(--bull)'},{t:'PTBA',s:71,c:'var(--bull)'},
+  {t:'ANTM',s:68,c:'var(--bull)'},{t:'GOTO',s:18,c:'var(--bear)'},
+  {t:'EMTK',s:22,c:'var(--bear)'},{t:'BBCA',s:38,c:'var(--accent-gold)'},
+];
+
+const floatData = [
+  {t:'DCII',holder:'PT DCI Indonesia',float:'0.20%',risk:'low'},
+  {t:'GIAA',holder:'PT Danantara',float:'4.02%',risk:'low'},
+  {t:'ITMG',holder:'Banpu Public Co',float:'32.9%',risk:'mid'},
+  {t:'BBRI',holder:'PT Danantara',float:'41.5%',risk:'mid'},
+  {t:'TLKM',holder:'PT Danantara',float:'43.9%',risk:'mid'},
+  {t:'BBCA',holder:'Djarum Group',float:'52.2%',risk:'high'},
+  {t:'ASII',holder:'Jardine Matheson',float:'49.8%',risk:'high'},
+  {t:'UNVR',holder:'Unilever PLC',float:'15.0%',risk:'low'},
+];
+
+/* ── CONGLOMERATE DETAIL DATA ── */
+const congDetails = {
+  'Salim Group': {mc:'Rp 820T',saham:14,listed:'IDX',tokoh:'Anthony Salim',sektor:'Consumer, Agri, Keuangan',return5y:'+142%',divYield:'2.8%',tickers:['ICBP','INDF','BTPN','MLBI','INDP','SIMP','AALI','LPPF','DFAM','STRK','CMRY','STTP','DLTA','MYOR']},
+  'Sinar Mas Group': {mc:'Rp 620T',saham:12,listed:'IDX',tokoh:'Franky Widjaja',sektor:'Kertas, Kelapa Sawit, Keuangan',return5y:'+89%',divYield:'1.4%',tickers:['SMGR','BNLI','SMAR','PALM','APP','INKP','TKIM','KPIG','BSDE','DUTI','FPNI','SMDR']},
+  'Lippo Group': {mc:'Rp 340T',saham:12,listed:'IDX',tokoh:'James Riady',sektor:'Properti, Kesehatan, Ritel',return5y:'-18%',divYield:'0.6%',tickers:['LPKR','APLN','CIMB','LPGI','MLPL','MAPI','KARK','SILOAM','HERO','LPLI','ROTI','GMFI']},
+  'Bakrie Group': {mc:'Rp 45T',saham:11,listed:'IDX',tokoh:'Aburizal Bakrie',sektor:'Tambang, Telco, Properti',return5y:'-62%',divYield:'0.0%',tickers:['BUMI','UNSP','ENRG','BNBR','BTEL','VIVA','ELTY','BRMS','DEWA','TRIL','BKSL']},
+  'Djarum / BCA Group': {mc:'Rp 1.240T',saham:10,listed:'IDX',tokoh:'Robert Budi Hartono',sektor:'Perbankan, Rokok, Consumer',return5y:'+210%',divYield:'2.1%',tickers:['BBCA','HMSP','UNVR','DOID','ERAA','MNCN','BHIT','CTRA','TGKA','ACES']},
+  'Astra Group': {mc:'Rp 680T',saham:8,listed:'IDX',tokoh:'Jardine Matheson / Publik',sektor:'Otomotif, Agrikultur, Alat Berat',return5y:'+67%',divYield:'3.2%',tickers:['ASII','AALI','UNTR','TBLA','ACST','MDRN','AGII','AUTO']},
+  'Prajogo Pangestu': {mc:'Rp 920T',saham:7,listed:'IDX',tokoh:'Prajogo Pangestu',sektor:'Petrokimia, Energi',return5y:'+890%',divYield:'0.4%',tickers:['BRPT','TPIA','PBSA','BCIP','CUAN','LPKR','MCAS']},
+  'Danantara / BUMN': {mc:'Rp 3.800T',saham:12,listed:'IDX',tokoh:'Pemerintah RI',sektor:'Perbankan, Telco, Tambang',return5y:'+38%',divYield:'4.8%',tickers:['BBRI','BMRI','TLKM','PTBA','ANTM','BRIS','BBNI','PGAS','GIAA','WSKT','WIKA','ADHI']},
+  'Hary Tanoesoedibjo': {mc:'Rp 28T',saham:5,listed:'IDX',tokoh:'Hary Tanoesoedibjo',sektor:'Media, Properti, Keuangan',return5y:'-41%',divYield:'0.0%',tickers:['MNCN','BHIT','RCTI','KPIG','BCAP']},
+  'Chairul Tanjung CT Corp': {mc:'Rp 180T',saham:6,listed:'IDX',tokoh:'Chairul Tanjung',sektor:'Ritel, Keuangan, Media',return5y:'+24%',divYield:'0.8%',tickers:['ACES','MAPI','MEGA','CMPP','NELY','CNKO']},
+  'Tahir Group': {mc:'Rp 62T',saham:4,listed:'IDX',tokoh:'Tahir',sektor:'Keuangan, Properti',return5y:'+18%',divYield:'1.2%',tickers:['MPMX','BCIP','APIC','BTEK']},
+  'Edwin Soeryadjaya': {mc:'Rp 140T',saham:5,listed:'IDX',tokoh:'Edwin Soeryadjaya',sektor:'Tambang, Konstruksi',return5y:'+112%',divYield:'2.4%',tickers:['UNTR','SGER','GEMS','DSSA','FIRE']},
+  'Garibaldi Thohir': {mc:'Rp 380T',saham:6,listed:'IDX',tokoh:'Garibaldi Thohir',sektor:'Batu Bara, Energi',return5y:'+280%',divYield:'5.2%',tickers:['DSSA','ADRO','BSSR','PTRO','ADMF','HADE']},
+  'Widjaja Family': {mc:'Rp 520T',saham:8,listed:'IDX',tokoh:'Eka Tjipta Widjaja (Alm.)',sektor:'Kertas, Kelapa Sawit',return5y:'+74%',divYield:'1.8%',tickers:['SMAR','PALM','INKP','TKIM','APP','SIIP','SMDR','SMGR']},
+  'Djoko Susanto': {mc:'Rp 94T',saham:3,listed:'IDX',tokoh:'Djoko Susanto',sektor:'Ritel',return5y:'+156%',divYield:'1.0%',tickers:['AMRT','MIDI','SMPC']},
+  'Anthony Salim': {mc:'Rp 820T',saham:4,listed:'IDX',tokoh:'Anthony Salim',sektor:'Consumer, Agrikultur',return5y:'+142%',divYield:'2.8%',tickers:['INDF','ICBP','SIMP','AALI']},
+  'Peter Sondakh': {mc:'Rp 14T',saham:3,listed:'IDX',tokoh:'Peter Sondakh',sektor:'Industri',return5y:'+8%',divYield:'0.4%',tickers:['RAJA','BSRT','RICY']},
+  'Lo Kheng Hong (Individu)': {mc:'Rp 12T*',saham:16,listed:'IDX',tokoh:'Lo Kheng Hong',sektor:'Diversified (Value Investing)',return5y:'+320%',divYield:'3.1%',tickers:['CFIN','ADMG','MA
