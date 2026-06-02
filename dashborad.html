@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS SAHAM — Institutional Intelligence. Retail Accessible.</title>
+
+<!-- External Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN SYSTEM: Bloomberg × Apple Vision Pro × TradingView
+   ═══════════════════════════════════════════ */
+:root {
+  --bg-primary: #060A12;
+  --bg-secondary: #0B1120;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.07);
+  --glass-bg: rgba(13,20,40,0.7);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-blur: blur(20px);
+  --accent-blue: #00D4FF;
+  --accent-purple: #7B2FFF;
+  --accent-gold: #FFB800;
+  --bull: #00E676;
+  --bear: #FF3D5A;
+  --neutral: #607D8B;
+  --text-primary: #E8F0FE;
+  --text-secondary: rgba(232,240,254,0.55);
+  --text-muted: rgba(232,240,254,0.3);
+  --border: rgba(255,255,255,0.07);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --font-mono: 'JetBrains Mono','Roboto Mono',monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius:2px; }
+
+/* ─── FREE TIER BANNER ─── */
+.tier-banner {
+  position:fixed; bottom:0; left:0; right:0; z-index:500;
+  background:linear-gradient(90deg,rgba(6,10,18,0.98),rgba(11,17,32,0.98));
+  border-top:1px solid rgba(255,184,0,0.3);
+  padding:10px 20px;
+  display:flex; align-items:center; gap:16px;
+  backdrop-filter:blur(20px);
+}
+.tier-banner-text { font-size:12px; color:var(--text-secondary); flex:1; }
+.tier-badge {
+  padding:3px 10px; border-radius:20px;
+  background:rgba(255,184,0,0.15); border:1px solid rgba(255,184,0,0.4);
+  font-size:10px; font-weight:800; color:var(--accent-gold);
+  text-transform:uppercase; letter-spacing:0.6px;
+}
+.tier-countdown {
+  font-family:var(--font-mono); font-size:13px; font-weight:700;
+  color:var(--bear); min-width:80px; text-align:center;
+}
+.tier-upgrade-btn {
+  padding:7px 16px; border-radius:6px; border:none; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent-gold),#FF8C00);
+  color:#000; font-size:12px; font-weight:800;
+}
+
+/* ─── LOCKED CONTENT ─── */
+.locked-overlay {
+  position:relative;
+}
+.lock-blur {
+  filter:blur(4px); pointer-events:none; user-select:none;
+}
+.lock-badge {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:rgba(6,10,18,0.9); border:1px solid rgba(255,184,0,0.4);
+  border-radius:var(--radius); padding:16px 24px; text-align:center;
+  backdrop-filter:blur(8px); z-index:10;
+}
+.lock-icon { font-size:24px; margin-bottom:6px; }
+.lock-text { font-size:12px; color:var(--text-secondary); }
+.lock-upgrade { margin-top:8px; padding:6px 14px; border-radius:6px;
+  background:linear-gradient(135deg,var(--accent-gold),#FF8C00);
+  border:none; color:#000; font-size:11px; font-weight:800; cursor:pointer; }
+
+/* ─── ANIMATED BG ─── */
+#bg-canvas {
+  position: fixed; top:0; left:0;
+  width:100%; height:100%;
+  z-index:0; pointer-events:none;
+  opacity:0.4;
+}
+
+/* ─── LAYOUT ─── */
+.app-shell {
+  position: relative; z-index:1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── TOP NAV ─── */
+.topbar {
+  grid-column: 1/-1;
+  background: rgba(6,10,18,0.95);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  gap: 16px; padding: 0 20px;
+  z-index:100;
+}
+
+.logo {
+  font-size:18px; font-weight:800;
+  letter-spacing:0.5px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex-shrink: 0;
+}
+
+.ticker-tape {
+  flex:1; overflow:hidden;
+  display:flex; gap:24px;
+  font-family: var(--font-mono);
+  font-size:12px;
+}
+
+.tick-item {
+  display:flex; gap:6px; align-items:center;
+  white-space:nowrap; flex-shrink:0;
+}
+.tick-name { color: var(--text-secondary); }
+.tick-val { color: var(--text-primary); font-weight:600; }
+.tick-chg.up { color: var(--bull); }
+.tick-chg.dn { color: var(--bear); }
+
+.topbar-actions {
+  display:flex; gap:8px; align-items:center; flex-shrink:0;
+}
+
+.btn {
+  padding:6px 14px; border-radius:6px;
+  font-size:12px; font-weight:600;
+  border:none; cursor:pointer;
+  transition: all 0.2s;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+.btn-ghost:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: #fff;
+}
+.btn-primary:hover { opacity:0.9; transform:translateY(-1px); }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction:column;
+  overflow-y:auto; overflow-x:hidden;
+  padding: 12px 0;
+}
+
+.sidebar-section { padding: 4px 12px; margin-bottom:4px; }
+
+.sidebar-label {
+  font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:1px;
+  color: var(--text-muted);
+  padding: 8px 4px 4px;
+}
+
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:var(--radius-sm);
+  font-size:13px; color: var(--text-secondary);
+  cursor:pointer; transition: all 0.15s;
+  white-space:nowrap;
+}
+.nav-item:hover, .nav-item.active {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+.nav-item.active { color: var(--accent-blue); }
+.nav-icon { font-size:15px; width:18px; text-align:center; }
+
+.sidebar-divider {
+  height:1px; background: var(--border);
+  margin: 8px 12px;
+}
+
+/* Market Status Badge */
+.market-status {
+  display:flex; align-items:center; gap:6px;
+  padding:8px 12px; margin:8px 12px;
+  background: rgba(0,230,118,0.08);
+  border:1px solid rgba(0,230,118,0.2);
+  border-radius:var(--radius-sm);
+  font-size:11px;
+}
+.status-dot {
+  width:7px; height:7px; border-radius:50%;
+  background: var(--bull);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.3; }
+}
+.market-status span { color: var(--bull); font-weight:600; }
+
+/* ─── MAIN CONTENT ─── */
+.main {
+  overflow-y:auto; overflow-x:hidden;
+  padding: 16px;
+  display:flex; flex-direction:column; gap:16px;
+}
+
+/* ─── GLASS CARD ─── */
+.card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.card-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-size:13px; font-weight:700;
+  color: var(--text-primary);
+  display:flex; align-items:center; gap:8px;
+}
+.card-body { padding:16px 18px; }
+
+/* ─── MACRO PANEL ─── */
+.macro-grid {
+  display:grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap:1px;
+  background: var(--border);
+}
+
+.macro-item {
+  background: var(--bg-secondary);
+  padding:12px 16px;
+  transition: background 0.2s;
+  cursor:default;
+}
+.macro-item:hover { background: var(--bg-card-hover); }
+
+.macro-name {
+  font-size:10px; color: var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.8px;
+  font-weight:600; margin-bottom:4px;
+}
+.macro-val {
+  font-family: var(--font-mono);
+  font-size:16px; font-weight:700;
+  color: var(--text-primary);
+}
+.macro-chg {
+  font-size:11px; margin-top:2px;
+  font-family: var(--font-mono);
+}
+.macro-chg.up { color: var(--bull); }
+.macro-chg.dn { color: var(--bear); }
+.macro-chg.neutral { color: var(--neutral); }
+.macro-tag {
+  font-size:9px; color: var(--text-muted);
+  margin-top:4px;
+}
+
+/* ─── HEATMAP ─── */
+.heatmap-tabs {
+  display:flex; gap:4px; padding:0 18px 0;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;
+}
+.htab {
+  padding:8px 14px; font-size:12px;
+  color: var(--text-secondary); cursor:pointer;
+  border-bottom:2px solid transparent;
+  white-space:nowrap; transition:all 0.2s;
+}
+.htab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+.htab:hover { color: var(--text-primary); }
+
+.heatmap-container {
+  padding:12px; min-height:260px;
+}
+
+.heatmap-grid {
+  display:flex; flex-wrap:wrap; gap:3px;
+}
+
+.heat-cell {
+  border-radius:6px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.3s;
+  overflow:hidden; position:relative;
+  flex:1; min-width:60px; min-height:52px;
+}
+.heat-cell:hover { transform:scale(1.03); z-index:10; }
+
+.heat-ticker {
+  font-family: var(--font-mono);
+  font-size:11px; font-weight:700;
+  color: rgba(255,255,255,0.9);
+}
+.heat-chg {
+  font-family: var(--font-mono);
+  font-size:10px;
+  color: rgba(255,255,255,0.75);
+}
+
+/* Heatmap color classes */
+.h-up4 { background: #00A855; }
+.h-up3 { background: #00C463; }
+.h-up2 { background: #00D97A; }
+.h-up1 { background: rgba(0,200,80,0.4); }
+.h-flat { background: rgba(96,125,139,0.3); }
+.h-dn1 { background: rgba(220,50,60,0.35); }
+.h-dn2 { background: #C62828; }
+.h-dn3 { background: #D32F2F; }
+.h-dn4 { background: #B71C1C; }
+
+/* ─── TOP ROW: 3 COLUMNS ─── */
+.top-row {
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap:16px;
+}
+
+/* ─── SMART MONEY RADAR ─── */
+.radar-list { display:flex; flex-direction:column; gap:8px; }
+
+.radar-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:10px 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  cursor:pointer; transition:all 0.2s;
+}
+.radar-item:hover { border-color: var(--accent-blue); background: rgba(0,212,255,0.05); }
+
+.radar-dot {
+  width:8px; height:8px; border-radius:50%;
+  flex-shrink:0; margin-top:4px;
+}
+.radar-dot.red { background: var(--bear); box-shadow:0 0 8px var(--bear); }
+.radar-dot.yellow { background: var(--accent-gold); box-shadow:0 0 8px var(--accent-gold); }
+.radar-dot.blue { background: var(--accent-blue); box-shadow:0 0 8px var(--accent-blue); }
+.radar-dot.green { background: var(--bull); box-shadow:0 0 8px var(--bull); }
+
+.radar-label {
+  font-size:11px; font-weight:700;
+  color: var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.5px;
+}
+.radar-val { font-size:13px; color: var(--text-primary); margin-top:2px; }
+.radar-sub { font-size:11px; color: var(--text-secondary); margin-top:1px; }
+
+/* ─── CAPITAL FLOW ─── */
+.flow-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:8px; margin-bottom:8px;
+}
+.flow-item {
+  padding:12px;
+  background: rgba(255,255,255,0.03);
+  border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+}
+.flow-label { font-size:10px; color: var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; }
+.flow-val {
+  font-family: var(--font-mono);
+  font-size:18px; font-weight:700;
+  margin-top:4px;
+}
+.flow-val.positive { color: var(--bull); }
+.flow-val.negative { color: var(--bear); }
+.flow-sub { font-size:11px; color: var(--text-secondary); margin-top:2px; }
+
+/* ─── AI SUMMARY ─── */
+.ai-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 8px; border-radius:20px;
+  background: rgba(123,47,255,0.2);
+  border:1px solid rgba(123,47,255,0.4);
+  font-size:10px; color: #B57BFF;
+  font-weight:600;
+}
+
+.ai-text {
+  font-size:13px; line-height:1.7;
+  color: var(--text-secondary);
+  margin-top:10px;
+}
+
+.ai-score-row {
+  display:flex; gap:10px; margin-top:12px;
+  flex-wrap:wrap;
+}
+
+.score-pill {
+  padding:5px 12px; border-radius:20px;
+  font-size:12px; font-weight:600;
+  border:1px solid;
+}
+.score-pill.bullish {
+  background: rgba(0,230,118,0.1);
+  border-color: rgba(0,230,118,0.3);
+  color: var(--bull);
+}
+.score-pill.neutral {
+  background: rgba(96,125,139,0.1);
+  border-color: rgba(96,125,139,0.3);
+  color: var(--neutral);
+}
+.score-pill.bearish {
+  background: rgba(255,61,90,0.1);
+  border-color: rgba(255,61,90,0.3);
+  color: var(--bear);
+}
+
+/* ─── MARKET CLOSE SUMMARY ─── */
+.mcs-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.mcs-section {
+  padding:12px 14px;
+  background: rgba(255,255,255,0.02);
+  border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+}
+
+.mcs-title {
+  font-size:10px; font-weight:700;
+  color: var(--accent-blue);
+  text-transform:uppercase; letter-spacing:0.8px;
+  margin-bottom:8px;
+}
+
+.mcs-row {
+  display:flex; justify-content:space-between;
+  align-items:center; padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:12px;
+}
+.mcs-row:last-child { border-bottom:none; }
+.mcs-key { color: var(--text-secondary); }
+.mcs-val { font-family: var(--font-mono); font-weight:600; color: var(--text-primary); }
+.mcs-val.up { color: var(--bull); }
+.mcs-val.dn { color: var(--bear); }
+
+.outlook-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 14px; border-radius:6px;
+  font-size:13px; font-weight:700;
+  margin-top:6px;
+}
+.outlook-badge.bearish {
+  background: rgba(255,61,90,0.12);
+  border:1px solid rgba(255,61,90,0.3);
+  color: var(--bear);
+}
+.outlook-badge.bullish {
+  background: rgba(0,230,118,0.12);
+  border:1px solid rgba(0,230,118,0.3);
+  color: var(--bull);
+}
+
+/* ─── STOCK TABLE ─── */
+.stock-table {
+  width:100%; border-collapse:collapse;
+  font-size:12px;
+}
+.stock-table th {
+  text-align:left; padding:8px 12px;
+  font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.6px;
+  color: var(--text-muted);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+.stock-table td {
+  padding:10px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle;
+}
+.stock-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+.ticker-badge {
+  font-family: var(--font-mono);
+  font-weight:700; font-size:13px;
+  color: var(--accent-blue);
+}
+.company-name { color: var(--text-secondary); font-size:11px; }
+
+.mono-val { font-family: var(--font-mono); }
+
+.nexus-bar {
+  display:flex; align-items:center; gap:8px;
+}
+.nexus-score-val {
+  font-family: var(--font-mono);
+  font-size:12px; font-weight:700;
+  min-width:28px;
+}
+.bar-bg {
+  flex:1; height:4px; border-radius:2px;
+  background: rgba(255,255,255,0.1);
+  overflow:hidden;
+}
+.bar-fill { height:100%; border-radius:2px; transition:width 1s; }
+.bar-fill.high { background: var(--bull); }
+.bar-fill.mid { background: var(--accent-gold); }
+.bar-fill.low { background: var(--bear); }
+
+.signal-tag {
+  padding:2px 8px; border-radius:4px;
+  font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.4px;
+}
+.signal-tag.buy { background:rgba(0,230,118,0.15); color:var(--bull); border:1px solid rgba(0,230,118,0.3); }
+.signal-tag.hold { background:rgba(255,184,0,0.15); color:var(--accent-gold); border:1px solid rgba(255,184,0,0.3); }
+.signal-tag.sell { background:rgba(255,61,90,0.15); color:var(--bear); border:1px solid rgba(255,61,90,0.3); }
+
+/* ─── RISK ALERTS ─── */
+.alert-list { display:flex; flex-direction:column; gap:6px; }
+.alert-item {
+  display:flex; gap:10px; align-items:flex-start;
+  padding:10px 12px;
+  border-radius:var(--radius-sm);
+  border:1px solid;
+  font-size:12px;
+}
+.alert-item.warning {
+  background:rgba(255,184,0,0.06);
+  border-color:rgba(255,184,0,0.2);
+}
+.alert-item.danger {
+  background:rgba(255,61,90,0.06);
+  border-color:rgba(255,61,90,0.2);
+}
+.alert-item.info {
+  background:rgba(0,212,255,0.06);
+  border-color:rgba(0,212,255,0.2);
+}
+.alert-icon { font-size:14px; flex-shrink:0; }
+.alert-text { color: var(--text-secondary); line-height:1.5; }
+.alert-ticker { color: var(--text-primary); font-weight:700; }
+
+/* ─── OWNERSHIP PANEL ─── */
+.ownership-row {
+  display:flex; justify-content:space-between;
+  padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.ownership-row:last-child { border:none; }
+.own-name { font-size:12px; color: var(--text-secondary); }
+.own-pct {
+  font-family: var(--font-mono);
+  font-size:12px; font-weight:600;
+  color: var(--text-primary);
+}
+.own-bar-bg {
+  width:80px; height:3px;
+  background: rgba(255,255,255,0.08);
+  border-radius:2px; overflow:hidden;
+  margin-top:4px;
+}
+.own-bar-fill { height:100%; border-radius:2px; }
+
+/* ─── SECTOR PERFORMANCE ─── */
+.sector-list { display:flex; flex-direction:column; gap:6px; }
+.sector-item {
+  display:flex; align-items:center; gap:10px;
+}
+.sector-name { font-size:12px; color: var(--text-secondary); min-width:120px; }
+.sector-bar-bg {
+  flex:1; height:6px; border-radius:3px;
+  background: rgba(255,255,255,0.06);
+  overflow:hidden;
+}
+.sector-bar-fill { height:100%; border-radius:3px; transition:width 1s; }
+.sector-val {
+  font-family: var(--font-mono);
+  font-size:11px; font-weight:700;
+  min-width:50px; text-align:right;
+}
+
+/* ─── DISCLAIMER ─── */
+.disclaimer {
+  font-size:10px; color: var(--text-muted);
+  padding:12px 18px;
+  border-top:1px solid var(--border);
+  line-height:1.6;
+}
+
+/* ─── CANVAS 3D ─── */
+#galaxy-canvas {
+  width:100%; height:300px;
+  border-radius:var(--radius-sm);
+}
+
+/* ─── AI CHAT BUBBLE ─── */
+.ai-fab {
+  position:fixed; bottom:24px; right:24px;
+  width:52px; height:52px; border-radius:50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:#fff;
+  box-shadow:0 8px 32px rgba(0,212,255,0.4);
+  transition:all 0.2s; z-index:1000;
+}
+.ai-fab:hover { transform:scale(1.1); }
+
+.ai-chat {
+  position:fixed; bottom:88px; right:24px;
+  width:340px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius:16px;
+  overflow:hidden;
+  z-index:999;
+  display:none;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.ai-chat.open { display:flex; flex-direction:column; }
+.ai-chat-header {
+  padding:12px 16px;
+  background: rgba(123,47,255,0.15);
+  border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:700;
+  display:flex; align-items:center; gap:8px;
+}
+.ai-chat-messages {
+  flex:1; padding:12px; max-height:300px;
+  overflow-y:auto;
+  display:flex; flex-direction:column; gap:8px;
+}
+.chat-msg {
+  padding:8px 12px; border-radius:10px;
+  font-size:12px; line-height:1.6;
+  max-width:90%;
+}
+.chat-msg.ai {
+  background: rgba(0,212,255,0.08);
+  border:1px solid rgba(0,212,255,0.15);
+  color: var(--text-secondary);
+  align-self:flex-start;
+}
+.chat-msg.user {
+  background: rgba(123,47,255,0.2);
+  border:1px solid rgba(123,47,255,0.3);
+  color: var(--text-primary);
+  align-self:flex-end;
+}
+.ai-chat-input {
+  display:flex; gap:8px;
+  padding:10px 12px;
+  border-top:1px solid var(--border);
+}
+.ai-chat-input input {
+  flex:1; background: rgba(255,255,255,0.06);
+  border:1px solid var(--border);
+  border-radius:6px; padding:7px 10px;
+  color: var(--text-primary); font-size:12px;
+  outline:none;
+}
+.ai-chat-input input:focus { border-color: var(--accent-blue); }
+.ai-send {
+  background: var(--accent-blue); color:#fff;
+  border:none; border-radius:6px;
+  padding:7px 12px; cursor:pointer;
+  font-size:14px;
+}
+
+/* Bottom row layout */
+.bottom-row {
+  display:grid;
+  grid-template-columns:1.4fr 1fr 0.8fr;
+  gap:16px;
+}
+
+.mid-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+
+/* Scrolling ticker tape */
+.tape-wrapper { overflow:hidden; flex:1; }
+.tape-inner {
+  display:flex; gap:28px;
+  animation: scroll 40s linear infinite;
+}
+.tape-inner:hover { animation-play-state:paused; }
+@keyframes scroll {
+  0% { transform:translateX(0); }
+  100% { transform:translateX(-50%); }
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 56px 1fr !important;
+  }
+  .topbar { grid-column: 1 !important; padding: 0 12px; }
+  .topbar-ticker { display: none; }
+  .sidebar {
+    position: fixed !important;
+    top: 56px; left: -260px;
+    height: calc(100vh - 56px);
+    z-index: 999;
+    transition: left 0.3s ease;
+    width: 240px !important;
+  }
+  .sidebar.open { left: 0 !important; }
+  .main { 
+    grid-column: 1 !important;
+    padding: 12px !important;
+    overflow-y: auto;
+  }
+  .hamburger-btn {
+    display: flex !important;
+  }
+  .cards-grid, .summary-grid, .grid-3, .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .mobile-overlay {
+    display: none;
+    position: fixed; top: 56px; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 998;
+  }
+  .mobile-overlay.open { display: block; }
+}
+@media (max-width: 480px) {
+  .topbar-right { gap: 8px; }
+  .card { padding: 12px !important; }
+  table { font-size: 11px; }
+  th, td { padding: 6px 8px !important; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Animated particle background -->
+<canvas id="bg-canvas"></canvas>
+
+<div class="app-shell">
+
+  <!-- Mobile overlay -->
+  <div class="mobile-overlay" id="mobileOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ═══ TOPBAR ═══ -->
+  <header class="topbar">
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" style="display:none;background:none;border:none;color:var(--text-primary);font-size:20px;cursor:pointer;padding:8px;line-height:1;">☰</button>
+    <div class="logo">NEXUS</div>
+
+    <div class="ticker-tape">
+      <div class="tape-wrapper">
+        <div class="tape-inner" id="tape">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">31 Mei 2026</span>
+      <a href="landing.html" class="btn btn-ghost" style="text-decoration:none;">Beranda</a>
+      <a href="login.html" class="btn btn-ghost" style="text-decoration:none;">Login</a>
+      <a href="login.html?tab=register" class="btn btn-primary" style="text-decoration:none;">Mulai Gratis</a>
+    </div>
+  </header>
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+
+    <div class="market-status">
+      <div class="status-dot"></div>
+      <span>Market Tutup</span>
+      <span style="color:var(--text-muted);font-size:10px;">16:00 WIB</span>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Dashboard</div>
+      <div class="nav-item active" onclick="scrollTo('#macro-grid')" title="Overview Dashboard">
+        <span class="nav-icon">⬛</span> Overview
+      </div>
+      <div class="nav-item" onclick="document.getElementById('heatmap-section').scrollIntoView({behavior:'smooth'})" title="Semua Heatmap">
+        <span class="nav-icon">🌡️</span> Heatmaps
+      </div>
+      <div class="nav-item" onclick="document.getElementById('radar-section').scrollIntoView({behavior:'smooth'})" title="Smart Money Radar">
+        <span class="nav-icon">🧲</span> Smart Money
+      </div>
+      <div class="nav-item" onclick="document.getElementById('flow-section').scrollIntoView({behavior:'smooth'})" title="Capital Flow">
+        <span class="nav-icon">💰</span> Capital Flow
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Analisa</div>
+      <div class="nav-item" onclick="window.location.href='screener.html'" title="Smart Money Screener">
+        <span class="nav-icon">🔬</span> Screener
+      </div>
+      <div class="nav-item" onclick="window.location.href='stock.html'" title="AI Research Report">
+        <span class="nav-icon">📋</span> AI Research
+      </div>
+      <div class="nav-item" onclick="window.location.href='stock.html#tab-fundamental'" title="Fundamental Analysis">
+        <span class="nav-icon">📊</span> Fundamental
+      </div>
+      <div class="nav-item" onclick="window.location.href='stock.html#tab-chart'" title="Technical Chart">
+        <span class="nav-icon">📈</span> Technical
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Ownership</div>
+      <div class="nav-item" onclick="window.location.href='ownership.html'" title="3D Galaxy Map">
+        <span class="nav-icon">🏢</span> Konglomerat
+      </div>
+      <div class="nav-item" onclick="window.location.href='ownership.html'" title="Network Graph 3D">
+        <span class="nav-icon">🕸️</span> Network 3D
+      </div>
+      <div class="nav-item" onclick="window.location.href='ownership.html'" title="Float Screener">
+        <span class="nav-icon">🌏</span> Float Screener
+      </div>
+      <div class="nav-item" onclick="window.location.href='stock.html#tab-ownership'" title="Ownership Trend">
+        <span class="nav-icon">📉</span> Ownership Trend
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Makro</div>
+      <div class="nav-item" onclick="document.getElementById('macro-section').scrollIntoView({behavior:'smooth'})" title="Economic Compass">
+        <span class="nav-icon">🌐</span> Economic Compass
+      </div>
+      <div class="nav-item" onclick="window.location.href='market-close.html'" title="Market Close Summary">
+        <span class="nav-icon">⚡</span> Market Close
+      </div>
+      <div class="nav-item" onclick="document.getElementById('alert-section').scrollIntoView({behavior:'smooth'})" title="Risk Alerts">
+        <span class="nav-icon">⚠️</span> Risk Alerts
+      </div>
+    </div>
+
+    <!-- IHSG mini chart -->
+    <div style="margin:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.6px;">IHSG</div>
+      <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;">7.234</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--bear);">▼ -0.42% (-30,5)</div>
+      <canvas id="mini-chart" height="40" style="margin-top:8px;width:100%;"></canvas>
+    </div>
+
+  </aside>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="main">
+
+    <!-- ECONOMIC COMPASS / MACRO PANEL -->
+    <div id="macro-section" class="card" style="padding:0;overflow:hidden;">
+      <div class="card-header">
+        <div class="card-title">🌐 Economic Compass — Makro, Komoditas & Riset</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="live-clock" style="font-size:10px;color:var(--accent-blue);font-family:var(--font-mono);font-weight:700;"></span>
+          <span style="font-size:9px;padding:2px 6px;background:rgba(0,230,118,0.15);color:var(--bull);border:1px solid rgba(0,230,118,0.3);border-radius:4px;font-weight:700;">● LIVE</span>
+        </div>
+      </div>
+      <div class="macro-grid" id="macro-grid"></div>
+
+      <!-- Economic Compass Extended -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);">
+
+        <!-- BI Research & Intelligence -->
+        <div style="padding:14px 18px;border-right:1px solid var(--border);">
+          <div style="font-size:10px;font-weight:800;color:var(--accent-blue);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">
+            🔬 Riset & Business Intelligence (Indonesia)
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;">
+            <div style="padding:8px 10px;background:rgba(0,212,255,0.04);border-radius:6px;border:1px solid rgba(0,212,255,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">Bank Indonesia — Laporan Kebijakan Moneter</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">BI Rate 5.75% (hold) · Inflasi target 2.5% · M2 +7.2% YoY · Kredit +9.1% YoY</div>
+              <div style="color:var(--text-muted);margin-top:3px;font-size:10px;">Sumber: <a href="#" style="color:var(--accent-blue);">bi.go.id/statistik</a> · Q1 2026</div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(255,184,0,0.04);border-radius:6px;border:1px solid rgba(255,184,0,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">BPS — Badan Pusat Statistik</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">PDB Q1 2026: +5,11% YoY · Ekspor +4.8% · Neraca Dagang surplus USD 4.2M</div>
+              <div style="color:var(--text-muted);margin-top:3px;font-size:10px;">Sumber: <a href="#" style="color:var(--accent-blue);">bps.go.id</a> · Apr 2026</div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(123,47,255,0.04);border-radius:6px;border:1px solid rgba(123,47,255,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">LPEM FEB UI — Economic Outlook 2026</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">Proyeksi PDB 2026: 5.2% · Risiko utama: DXY kuat, perlambatan China. Rekomendasi: sektor defensif &amp; komoditas.</div>
+              <div style="color:var(--text-muted);margin-top:3px;font-size:10px;">Sumber: LPEM FEB UI · Q1 2026</div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(0,230,118,0.04);border-radius:6px;border:1px solid rgba(0,230,118,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">OJK — Pasar Modal Indonesia</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">Market Cap IDX: Rp 11.240T · SID Aktif: 13,4 Juta · Reksa Dana AUM: Rp 820T (+6.1%)</div>
+              <div style="color:var(--text-muted);margin-top:3px;font-size:10px;">Sumber: <a href="#" style="color:var(--accent-blue);">ojk.go.id</a> · Apr 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sustainability Framework -->
+        <div style="padding:14px 18px;">
+          <div style="font-size:10px;font-weight:800;color:var(--accent-gold);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">
+            🌿 Kerangka Keberlanjutan (Sustainability Framework)
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;">
+            <div style="padding:8px 10px;background:rgba(0,230,118,0.04);border-radius:6px;border:1px solid rgba(0,230,118,0.1);">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-weight:700;color:var(--text-primary);">ESG Score IDX — LQ45</div>
+                <span style="font-family:var(--font-mono);font-size:12px;font-weight:800;color:var(--bull);">62/100</span>
+              </div>
+              <div style="color:var(--text-secondary);margin-top:2px;">Avg ESG LQ45: 62 · Top scorer: BBCA (81), TLKM (76), ANTM (72)</div>
+              <div style="display:flex;gap:6px;margin-top:4px;">
+                <span style="padding:1px 6px;background:rgba(0,230,118,0.15);border-radius:3px;font-size:9px;font-weight:700;color:var(--bull);">E: Baik</span>
+                <span style="padding:1px 6px;background:rgba(255,184,0,0.15);border-radius:3px;font-size:9px;font-weight:700;color:var(--accent-gold);">S: Sedang</span>
+                <span style="padding:1px 6px;background:rgba(0,212,255,0.15);border-radius:3px;font-size:9px;font-weight:700;color:var(--accent-blue);">G: Kuat</span>
+              </div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(255,184,0,0.04);border-radius:6px;border:1px solid rgba(255,184,0,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">TCFD / ISSB — Iklim & Keuangan</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">18 emiten IDX mulai disclosure climate risk sesuai ISSB S1/S2. Sektor terdampak: BUMI, UNSP, PTBA (coal).</div>
+              <div style="margin-top:4px;color:var(--bear);font-size:10px;font-weight:700;">⚠ Risiko Transisi: Emiten batubara rentan regulasi karbon 2028</div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(0,212,255,0.04);border-radius:6px;border:1px solid rgba(0,212,255,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">GRI — Global Reporting Initiative</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">42 emiten IDX terverifikasi GRI Standards 2021. Laporan sustainability wajib untuk IDX80 mulai 2027.</div>
+              <div style="color:var(--text-muted);margin-top:3px;font-size:10px;">Framework: GRI Universal Standards · Berlaku FY2025</div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(123,47,255,0.04);border-radius:6px;border:1px solid rgba(123,47,255,0.1);">
+              <div style="font-weight:700;color:var(--text-primary);">SDGs Alignment — Tujuan Pembangunan Berkelanjutan</div>
+              <div style="color:var(--text-secondary);margin-top:2px;">Top emiten aligned SDG: KLBF (SDG3 Kesehatan), TLKM (SDG9 Inovasi), ANTM (SDG12 Produksi Bertanggung Jawab)</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TOP ROW: Smart Money | Capital Flow | AI Summary -->
+    <div id="radar-section" class="top-row">
+
+      <!-- Smart Money Radar -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧲 Smart Money Radar</div>
+          <span style="font-size:10px;color:var(--accent-gold);font-weight:700;">LIVE</span>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <div class="radar-list" id="radar-list"></div>
+        </div>
+      </div>
+
+      <!-- Capital Flow -->
+      <div id="flow-section" class="card">
+        <div class="card-header">
+          <div class="card-title">💰 Capital Flow</div>
+          <span style="font-size:10px;color:var(--text-muted);">EOD 31 Mei 2026</span>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <div class="flow-row">
+            <div class="flow-item">
+              <div class="flow-label">Foreign Net</div>
+              <div class="flow-val negative">-Rp 420M</div>
+              <div class="flow-sub">Net Sell 3 hari</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-label">Domestic Net</div>
+              <div class="flow-val positive">+Rp 380M</div>
+              <div class="flow-sub">Net Buy 2 hari</div>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-item">
+              <div class="flow-label">Reksa Dana</div>
+              <div class="flow-val positive">+Rp 180M</div>
+              <div class="flow-sub">Akumulasi moderat</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-label">Broker Asing</div>
+              <div class="flow-val negative">-Rp 290M</div>
+              <div class="flow-sub">Distribusi</div>
+            </div>
+          </div>
+          <canvas id="flow-chart" height="70"></canvas>
+        </div>
+      </div>
+
+      <!-- AI Daily Brief -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            🤖 AI Daily Brief
+            <span class="ai-badge">NEXUS AI</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <div class="ai-text" id="ai-brief-text"></div>
+          <div class="ai-score-row">
+            <span class="score-pill bearish">🐻 Bearish 60%</span>
+            <span class="score-pill neutral">↔ Neutral 25%</span>
+            <span class="score-pill bullish">🐂 Bullish 15%</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HEATMAP PANEL -->
+    <div id="heatmap-section" class="card">
+      <div class="card-header" style="padding-bottom:0;">
+        <div class="card-title">🌡️ Market Heatmap Suite</div>
+        <span style="font-size:10px;color:var(--text-muted);">Update tiap 5 menit saat market buka</span>
+      </div>
+      <div class="heatmap-tabs" id="heatmap-tabs">
+        <div class="htab active" data-map="market">Market Cap</div>
+        <div class="htab" data-map="sector">Sector</div>
+        <div class="htab" data-map="foreign">Foreign Flow</div>
+        <div class="htab" data-map="smart">Smart Money</div>
+        <div class="htab" data-map="valuation">Valuation</div>
+        <div class="htab" data-map="volume">Volume Anomaly</div>
+      </div>
+      <div class="heatmap-container">
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+    </div>
+
+    <!-- MID ROW: Stock Table | Market Close Summary -->
+    <div class="mid-row">
+
+      <!-- Top Stocks Table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Nexus Score — Top Picks</div>
+          <span style="font-size:10px;color:var(--text-muted);">AI Scoring 6 Dimensi</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="stock-table" id="stock-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Harga</th>
+                <th>FV</th>
+                <th>MoS</th>
+                <th>Nexus Score</th>
+                <th>Signal</th>
+                <th>Flow</th>
+              </tr>
+            </thead>
+            <tbody id="stock-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Market Close Summary -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📰 Market Close Summary</div>
+          <span style="font-size:10px;color:var(--accent-gold);">AI GENERATED</span>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <div class="mcs-grid" id="mcs-grid"></div>
+          <div style="margin-top:10px;">
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Next Day Outlook</div>
+            <div class="outlook-badge bearish">🐻 BEARISH BIAS — 60% Probabilitas</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">IHSG range: 7.180 – 7.280 | Pivot: 7.220</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ROW: Ownership | Sector Perf | Risk Alerts -->
+    <div class="bottom-row">
+
+      <!-- Top KSEI Ownership Movers -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏢 Ownership Intelligence</div>
+          <span style="font-size:10px;color:var(--text-muted);">Data KSEI 30 Apr 2026</span>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <div style="font-size:10px;color:var(--accent-blue);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Top Akumulasi 🟢</div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">DSSA</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:70%;background:var(--bull);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bull);">+2.1%</div>
+              </div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">ADRO</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:55%;background:var(--bull);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bull);">+1.8%</div>
+              </div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">INCO</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:40%;background:var(--bull);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bull);">+1.4%</div>
+              </div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">PTBA</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:38%;background:var(--bull);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bull);">+1.2%</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--bear);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Top Distribusi 🔴</div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">EMTK</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:60%;background:var(--bear);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bear);">-1.9%</div>
+              </div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">GOTO</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:50%;background:var(--bear);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bear);">-1.6%</div>
+              </div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">BBCA</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:35%;background:var(--bear);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bear);">-0.9%</div>
+              </div>
+              <div class="ownership-row">
+                <div>
+                  <div class="own-name">TLKM</div>
+                  <div class="own-bar-bg"><div class="own-bar-fill" style="width:28%;background:var(--bear);"></div></div>
+                </div>
+                <div class="own-pct" style="color:var(--bear);">-0.7%</div>
+              </div>
+            </div>
+          </div>
+          <!-- Accumulation / Distribution Score -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+            <div style="padding:10px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.2);border-radius:var(--radius-sm);">
+              <div style="font-size:10px;color:var(--bull);font-weight:700;letter-spacing:0.6px;">ACCUM SCORE</div>
+              <div style="font-family:var(--font-mono);font-size:22px;font-weight:800;color:var(--bull);">68</div>
+              <div style="font-size:10px;color:var(--text-secondary);">Moderat positif</div>
+            </div>
+            <div style="padding:10px;background:rgba(255,61,90,0.06);border:1px solid rgba(255,61,90,0.2);border-radius:var(--radius-sm);">
+              <div style="font-size:10px;color:var(--bear);font-weight:700;letter-spacing:0.6px;">DISTRIB SCORE</div>
+              <div style="font-family:var(--font-mono);font-size:22px;font-weight:800;color:var(--bear);">42</div>
+              <div style="font-size:10px;color:var(--text-secondary);">Tekanan sedang</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sector Performance -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 Sektor Performance Hari Ini</div>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <div class="sector-list" id="sector-list"></div>
+        </div>
+      </div>
+
+      <!-- Risk Alerts -->
+      <div id="alert-section" class="card">
+        <div class="card-header">
+          <div class="card-title">⚠️ Risk Alerts</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;color:var(--bear);font-weight:700;" id="alert-count-badge">7 Aktif</span>
+            <button onclick="showAlertModal()" style="padding:3px 8px;border-radius:4px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);color:var(--accent-blue);font-size:10px;cursor:pointer;">+ Set Alert</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:10px;">
+          <!-- Regulatory Alerts from Exchange -->
+          <div style="font-size:9px;font-weight:800;color:var(--bear);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">🏛 Peringatan Resmi Bursa (IDX)</div>
+          <div class="alert-list" id="regulatory-alert-list" style="margin-bottom:12px;"></div>
+          <!-- Price Alerts user-set -->
+          <div style="font-size:9px;font-weight:800;color:var(--accent-gold);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">🔔 Peringatan Harga (Price Alerts)</div>
+          <div class="alert-list" id="price-alert-list" style="margin-bottom:12px;"></div>
+          <!-- Smart Money / Risk Alerts -->
+          <div style="font-size:9px;font-weight:800;color:var(--accent-blue);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">🧲 Risiko Pasar & Smart Money</div>
+          <div class="alert-list" id="alert-list"></div>
+        </div>
+      </div>
+
+      <!-- Alert Modal -->
+      <div id="alert-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:var(--bg-secondary);border:1px solid var(--glass-border);border-radius:var(--radius);padding:24px;width:340px;max-width:90vw;">
+          <div style="font-size:14px;font-weight:800;margin-bottom:16px;display:flex;justify-content:space-between;">
+            🔔 Set Price Alert
+            <span style="cursor:pointer;color:var(--text-muted);" onclick="document.getElementById('alert-modal').style.display='none'">✕</span>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px;">Ticker</label>
+            <input id="alert-ticker" type="text" placeholder="contoh: TLKM" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;outline:none;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+              <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px;">Batas Atas (Jual)</label>
+              <input id="alert-upper" type="number" placeholder="3.800" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px;">Batas Bawah (Beli)</label>
+              <input id="alert-lower" type="number" placeholder="3.100" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;outline:none;">
+            </div>
+          </div>
+          <button onclick="saveAlert()" style="width:100%;padding:10px;border-radius:6px;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Simpan Alert</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- DISCLAIMER -->
+    <div class="card disclaimer">
+      ⚠️ <strong>DISCLAIMER:</strong> Seluruh informasi, skor, analisa, dan laporan yang ditampilkan di platform ini bersifat <strong>informasional semata</strong> dan <strong>bukan merupakan rekomendasi investasi, saran keuangan, atau ajakan membeli/menjual efek</strong>. Investasi di pasar modal mengandung risiko — nilai investasi dapat naik maupun turun. Lakukan riset mandiri (<em>due diligence</em>) dan konsultasikan dengan penasihat keuangan terdaftar sebelum membuat keputusan investasi. Platform ini tidak bertanggung jawab atas kerugian yang terjadi berdasarkan informasi yang disajikan. Data kepemilikan bersumber dari KSEI, harga dari IDX. Data makro dari sumber resmi Bank Indonesia, BPS, dan provider global.
+    </div>
+
+  </main>
+</div>
+
+<!-- FREE TIER BANNER -->
+<div class="tier-banner" id="tier-banner">
+  <span class="tier-badge">FREE</span>
+  <div class="tier-banner-text">
+    Akun Gratis — Akses terbatas: <strong style="color:var(--text-primary);">1 Konglomerat</strong> &amp; <strong style="color:var(--text-primary);">2 Jenis Saham</strong>.
+    Upgrade ke <strong style="color:var(--accent-gold);">PRO</strong> untuk akses penuh tanpa batas waktu.
+  </div>
+  <div>
+    <div style="font-size:9px;color:var(--text-muted);text-align:center;margin-bottom:2px;">Sisa Waktu Gratis</div>
+    <div class="tier-countdown" id="tier-countdown">6h 23m 18d</div>
+  </div>
+  <button class="tier-upgrade-btn" onclick="window.location.href='login.html?tab=register'">🚀 Upgrade PRO</button>
+  <span style="font-size:16px;cursor:pointer;color:var(--text-muted);" onclick="document.getElementById('tier-banner').style.display='none'">✕</span>
+</div>
+
+<!-- AI Chat FAB -->
+<button class="ai-fab" id="ai-fab-btn" onclick="toggleChat()">🤖</button>
+<div class="ai-chat" id="ai-chat">
+  <div class="ai-chat-header">
+    🤖 NEXUS AI Assistant
+    <span style="margin-left:auto;cursor:pointer;color:var(--text-muted);" onclick="toggleChat()">✕</span>
+  </div>
+  <div class="ai-chat-messages" id="chat-messages">
+    <div class="chat-msg ai">Halo! Saya NEXUS AI. Tanya apa saja tentang saham IDX, makro, atau ownership. Contoh: "Siapa pemegang terbesar BBCA?" atau "Analisa ADRO sekarang".</div>
+  </div>
+  <div class="ai-chat-input">
+    <input type="text" id="chat-input" placeholder="Tanya tentang saham..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button class="ai-send" onclick="sendChat()">↑</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════ */
+
+const macroData = [
+  { name:'BI Rate', val:'5.75%', chg:'+0bps', dir:'neutral', tag:'Bank Indonesia' },
+  { name:'FED Rate', val:'5.50%', chg:'+0bps', dir:'neutral', tag:'Federal Reserve' },
+  { name:'Inflasi', val:'2.84%', chg:'+0.12%', dir:'up', tag:'CPI YoY' },
+  { name:'M2 Growth', val:'+7.2%', chg:'+0.3%', dir:'up', tag:'Money Supply' },
+  { name:'DXY', val:'104.2', chg:'-0.3%', dir:'dn', tag:'Dollar Index' },
+  { name:'Gold', val:'$2,345', chg:'+0.8%', dir:'up', tag:'XAU/USD oz' },
+  { name:'Oil WTI', val:'$79.2', chg:'-1.2%', dir:'dn', tag:'Crude /bbl' },
+  { name:'Nickel', val:'$16,200', chg:'+0.5%', dir:'up', tag:'LME /ton' },
+  { name:'Coal', val:'$132', chg:'+3.1%', dir:'up', tag:'Newcastle /ton' },
+  { name:'CPO', val:'Rp3,820', chg:'+1.8%', dir:'up', tag:'Bursa Malaysia/ton' },
+];
+
+const heatmapData = [
+  {t:'BBCA',c:+0.8,s:'big'},{t:'BBRI',c:-1.2,s:'big'},{t:'BMRI',c:+1.5,s:'big'},
+  {t:'TLKM',c:-0.3,s:'big'},{t:'ASII',c:+2.1,s:'big'},{t:'UNVR',c:-0.7,s:'med'},
+  {t:'BBNI',c:+0.4,s:'med'},{t:'HMSP',c:-1.8,s:'med'},{t:'ICBP',c:+0.2,s:'med'},
+  {t:'KLBF',c:+1.1,s:'med'},{t:'INDF',c:-0.5,s:'med'},{t:'SMGR',c:+0.9,s:'sm'},
+  {t:'PGAS',c:+3.2,s:'sm'},{t:'PTBA',c:-2.1,s:'sm'},{t:'UNTR',c:+1.7,s:'sm'},
+  {t:'ADRO',c:-0.9,s:'sm'},{t:'GGRM',c:+0.3,s:'sm'},{t:'MNCN',c:-1.5,s:'sm'},
+  {t:'ANTM',c:+2.4,s:'sm'},{t:'INCO',c:-0.2,s:'sm'},{t:'EXCL',c:+0.6,s:'sm'},
+  {t:'BRIS',c:+1.3,s:'sm'},{t:'ACES',c:-1.1,s:'sm'},{t:'TOWR',c:+0.1,s:'sm'},
+  {t:'MDKA',c:-2.5,s:'sm'},{t:'BRPT',c:+1.9,s:'sm'},{t:'ESSA',c:-0.4,s:'sm'},
+  {t:'EMTK',c:+0.7,s:'sm'},{t:'MAPI',c:-1.3,s:'sm'},{t:'BUKA',c:+2.8,s:'sm'},
+  {t:'GOTO',c:-3.1,s:'sm'},{t:'ITMG',c:+1.4,s:'sm'},{t:'SIDO',c:-0.6,s:'sm'},
+  {t:'CPIN',c:+0.5,s:'sm'},{t:'JPFA',c:-1.7,s:'sm'},{t:'ERAA',c:+3.5,s:'sm'},
+  {t:'MEDC',c:-0.1,s:'sm'},{t:'AKRA',c:+0.8,s:'sm'},{t:'TPIA',c:+1.2,s:'sm'},
+  {t:'DSSA',c:+2.2,s:'sm'},
+];
+
+const sectorData = [
+  {name:'Energy',val:+1.8,max:4},{name:'Komoditas',val:+1.2,max:4},
+  {name:'Kesehatan',val:+0.7,max:4},{name:'Infrastruktur',val:+0.4,max:4},
+  {name:'Consumer',val:+0.1,max:4},{name:'Agrikultur',val:-0.3,max:4},
+  {name:'Industri',val:-0.6,max:4},{name:'Properti',val:-0.8,max:4},
+  {name:'Perbankan',val:-0.9,max:4},{name:'Teknologi',val:-2.1,max:4},
+];
+
+const radarData = [
+  {
+    dot:'red', label:'Unusual Volume',
+    val:'GOTO +340% | BUKA +280% | TLKM +180%',
+    sub:'3 saham melampaui 3× rata-rata 20 hari'
+  },
+  {
+    dot:'yellow', label:'Unusual Accumulation',
+    val:'DSSA — broker A,C,E beli 3 hari berturut',
+    sub:'Score akumulasi: 82/100'
+  },
+  {
+    dot:'blue', label:'Hidden Rotation',
+    val:'Banking → Energy (sinyal 5 hari)',
+    sub:'Foreign distribusi BBCA, akumulasi ADRO'
+  },
+  {
+    dot:'green', label:'Sector Rotation',
+    val:'Energy net asing: +Rp420M | Bank: -Rp180M',
+    sub:'Rotasi ke komoditas cycle berlanjut'
+  },
+];
+
+const stockData = [
+  {t:'TLKM',n:'Telekomunikasi Indonesia',p:'3.220',fv:'3.800',mos:+18,score:78,signal:'buy',flow:'↑ Accum'},
+  {t:'ADRO',n:'Adaro Andalan Indonesia',p:'2.840',fv:'3.200',mos:+13,score:81,signal:'buy',flow:'↑ Asing Buy'},
+  {t:'ANTM',n:'Aneka Tambang',p:'1.680',fv:'2.100',mos:+25,score:74,signal:'buy',flow:'↑ Accum'},
+  {t:'PTBA',n:'Tambang Batubara Bukit Asam',p:'3.410',fv:'3.750',mos:+10,score:72,signal:'buy',flow:'↑ Asing Buy'},
+  {t:'BBCA',n:'Bank Central Asia',p:'10.925',fv:'10.200',mos:-7,score:78,signal:'hold',flow:'↓ Distrib'},
+  {t:'GOTO',n:'GoTo Gojek Tokopedia',p:'78',fv:'55',mos:-30,score:22,signal:'sell',flow:'↓ Asing Jual'},
+  {t:'DSSA',n:'Dian Swastatika Sentosa',p:'49.500',fv:'55.000',mos:+11,score:76,signal:'buy',flow:'↑ Smart Money'},
+  {t:'INCO',n:'Vale Indonesia',p:'4.320',fv:'5.200',mos:+20,score:73,signal:'buy',flow:'↑ Accum'},
+];
+
+const mcsData = {
+  summary: [
+    {k:'IHSG',v:'7.234',cls:'dn'},{k:'Perubahan',v:'-0.42% (-30,5)',cls:'dn'},
+    {k:'Volume',v:'Rp 12,3 T',cls:''},{k:'A/D Ratio',v:'218/312/156',cls:''},
+    {k:'Sektor Terbaik',v:'Energy +1.8%',cls:'up'},{k:'Sektor Terburuk',v:'Teknologi -2.1%',cls:'dn'},
+  ],
+  flow: [
+    {k:'Foreign',v:'-Rp 420M',cls:'dn'},{k:'Domestic',v:'+Rp 380M',cls:'up'},
+    {k:'Top Beli',v:'ADRO, PTBA',cls:'up'},{k:'Top Jual',v:'BBCA, BMRI',cls:'dn'},
+  ],
+  macro: [
+    {k:'BI Rate Impact',v:'Negatif bank',cls:'dn'},{k:'Coal Effect',v:'Positif energy',cls:'up'},
+    {k:'Rupiah',v:'Rp15.420/USD',cls:'dn'},{k:'Global',v:'US flat, CN -0.8%',cls:'dn'},
+  ],
+  risk: [
+    {k:'Overvalued',v:'GOTO, BUKA',cls:'dn'},{k:'Undervalued',v:'TLKM, ANTM',cls:'up'},
+    {k:'Unusual Accum',v:'DSSA (3 hari)',cls:'up'},{k:'Unusual Dist',v:'EMTK (4 hari)',cls:'dn'},
+  ],
+};
+
+const alertData = [
+  {type:'danger',icon:'⚠️',text:'<span class="alert-ticker">GOTO</span> valuasi overvalued — P/S 8x dengan cash burn tinggi. Hati-hati posisi panjang.'},
+  {type:'warning',icon:'�
