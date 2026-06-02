@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS SAHAM — Login / Daftar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --bg:#060A12; --glass:rgba(13,20,40,0.85); --border:rgba(255,255,255,0.09);
+  --blue:#00D4FF; --purple:#7B2FFF; --gold:#FFB800;
+  --bull:#00E676; --bear:#FF3D5A;
+  --t1:#E8F0FE; --t2:rgba(232,240,254,0.55); --t3:rgba(232,240,254,0.3);
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;}
+#bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+
+.login-container{position:relative;z-index:1;width:100%;max-width:420px;padding:20px;}
+
+.login-logo{text-align:center;margin-bottom:28px;}
+.logo-text{font-size:26px;font-weight:900;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo-sub{font-size:12px;color:var(--t3);margin-top:4px;}
+
+.login-card{background:var(--glass);backdrop-filter:blur(24px);
+  border:1px solid var(--border);border-radius:18px;overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,0.6);}
+
+/* TABS */
+.tab-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+.login-tab{padding:14px;text-align:center;font-size:13px;font-weight:600;
+  cursor:pointer;color:var(--t3);transition:all 0.2s;border-bottom:2px solid transparent;}
+.login-tab.active{color:var(--blue);border-bottom-color:var(--blue);background:rgba(0,212,255,0.04);}
+.login-tab:hover{color:var(--t1);}
+
+/* FORM */
+.form-wrap{padding:28px;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+.form-group{margin-bottom:18px;}
+.form-label{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;
+  letter-spacing:0.7px;margin-bottom:6px;display:block;}
+.form-input{width:100%;background:rgba(255,255,255,0.06);
+  border:1px solid var(--border);border-radius:8px;
+  padding:11px 14px;color:var(--t1);font-size:13px;outline:none;
+  transition:all 0.2s;}
+.form-input:focus{border-color:var(--blue);background:rgba(0,212,255,0.05);}
+.form-input::placeholder{color:var(--t3);}
+.form-input-icon{position:relative;}
+.form-input-icon .form-input{padding-left:38px;}
+.form-input-icon .fi-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3);}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* STRENGTH BAR */
+.password-strength{height:3px;border-radius:2px;margin-top:6px;background:rgba(255,255,255,0.06);overflow:hidden;}
+.ps-fill{height:100%;border-radius:2px;transition:all 0.3s;width:0%;}
+.ps-text{font-size:10px;color:var(--t3);margin-top:4px;}
+
+/* FORGOT */
+.form-row-between{display:flex;justify-content:space-between;align-items:center;margin-top:-10px;margin-bottom:16px;}
+.form-forgot{font-size:12px;color:var(--blue);cursor:pointer;text-decoration:none;}
+
+/* SUBMIT BTN */
+.btn-submit{width:100%;padding:13px;border-radius:8px;font-size:15px;font-weight:800;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;border:none;cursor:pointer;transition:all 0.2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-submit:hover{opacity:0.9;transform:translateY(-1px);box-shadow:0 8px 30px rgba(0,212,255,0.3);}
+.btn-submit:active{transform:translateY(0);}
+
+/* LOADING STATE */
+.btn-submit.loading{pointer-events:none;}
+.btn-submit.loading::after{content:'';width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;margin-left:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--t3);font-size:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* SOCIAL */
+.social-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.social-btn{padding:10px;border:1px solid var(--border);border-radius:8px;
+  background:rgba(255,255,255,0.04);color:var(--t2);font-size:13px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all 0.2s;}
+.social-btn:hover{border-color:var(--blue);color:var(--t1);}
+
+/* TERMS */
+.terms{font-size:11px;color:var(--t3);text-align:center;margin-top:16px;line-height:1.6;}
+.terms a{color:var(--blue);text-decoration:none;}
+
+/* SUCCESS STATE */
+.success-state{display:none;text-align:center;padding:40px 28px;}
+.success-icon{font-size:52px;margin-bottom:16px;}
+.success-title{font-size:20px;font-weight:800;margin-bottom:8px;}
+.success-sub{font-size:13px;color:var(--t2);margin-bottom:24px;line-height:1.6;}
+.btn-goto{display:inline-block;padding:12px 28px;border-radius:8px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;text-decoration:none;font-size:14px;font-weight:700;}
+
+/* ERROR / ALERT */
+.alert{padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;display:none;}
+.alert.error{background:rgba(255,61,90,0.1);border:1px solid rgba(255,61,90,0.3);color:var(--bear);}
+.alert.success{background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);color:var(--bull);}
+
+/* BACK LINK */
+.back-link{text-align:center;margin-top:16px;font-size:12px;color:var(--t3);}
+.back-link a{color:var(--blue);text-decoration:none;}
+
+/* PLAN SELECT */
+.plan-select{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
+.plan-opt{padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;}
+.plan-opt.selected{border-color:var(--blue);background:rgba(0,212,255,0.08);}
+.plan-name{font-size:12px;font-weight:700;}
+.plan-price{font-size:11px;color:var(--t3);margin-top:2px;}
+
+/* Feature badges on login side */
+.login-perks{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+.perk{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t2);}
+.perk-icon{font-size:14px;flex-shrink:0;}
+
+@media (max-width: 480px) {
+  .login-container { padding: 12px; }
+  .form-row { grid-template-columns: 1fr !important; }
+  .social-btns { grid-template-columns: 1fr !important; }
+  .plan-select { grid-template-columns: 1fr !important; }
+  .form-wrap { padding: 20px 16px; }
+}
+
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="login-container">
+
+  <div class="login-logo">
+    <a href="landing.html" style="text-decoration:none;">
+      <div class="logo-text">NEXUS SAHAM</div>
+    </a>
+    <div class="logo-sub">Institutional Intelligence. Retail Accessible.</div>
+  </div>
+
+  <div class="login-card">
+    <div class="tab-row">
+      <div class="login-tab active" id="tab-login" onclick="switchTab('login')">Masuk</div>
+      <div class="login-tab" id="tab-register" onclick="switchTab('register')">Daftar Gratis</div>
+    </div>
+
+    <!-- ══ LOGIN FORM ══ -->
+    <div class="tab-pane active" id="pane-login">
+      <div class="form-wrap">
+
+        <div class="alert" id="login-alert"></div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <div class="form-input-icon">
+            <span class="fi-icon">✉️</span>
+            <input class="form-input" type="email" id="login-email" placeholder="nama@email.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="form-input-icon">
+            <span class="fi-icon">🔒</span>
+            <input class="form-input" type="password" id="login-pass" placeholder="Password kamu" onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+        </div>
+
+        <div class="form-row-between">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer;">
+            <input type="checkbox" style="accent-color:var(--blue);"> Ingat saya
+          </label>
+          <a href="#" class="form-forgot" onclick="showForgot()">Lupa password?</a>
+        </div>
+
+        <button class="btn-submit" id="login-btn" onclick="doLogin()">
+          🔐 Masuk ke Dashboard
+        </button>
+
+        <div class="divider">atau masuk dengan</div>
+
+        <div class="social-btns">
+          <button class="social-btn" onclick="socialLogin('Google')">🔵 Google</button>
+          <button class="social-btn" onclick="socialLogin('Apple')">⚫ Apple</button>
+        </div>
+
+        <div class="login-perks">
+          <div class="perk"><span class="perk-icon">✅</span>Akses 956 tickers IDX</div>
+          <div class="perk"><span class="perk-icon">✅</span>Data KSEI ownership</div>
+          <div class="perk"><span class="perk-icon">✅</span>AI Research Report</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ REGISTER FORM ══ -->
+    <div class="tab-pane" id="pane-register">
+      <div class="form-wrap">
+
+        <div class="alert" id="reg-alert"></div>
+
+        <!-- Plan Select -->
+        <div style="margin-bottom:18px;">
+          <div class="form-label" style="display:block;margin-bottom:8px;">Pilih Plan (bisa upgrade kapan saja)</div>
+          <div class="plan-select">
+            <div class="plan-opt" id="plan-free" onclick="selectPlan('free')">
+              <div class="plan-name">Gratis</div>
+              <div class="plan-price">Rp 0 / selamanya</div>
+            </div>
+            <div class="plan-opt selected" id="plan-pro" onclick="selectPlan('pro')">
+              <div class="plan-name" style="color:var(--blue);">Pro ⭐</div>
+              <div class="plan-price">14 hari gratis lalu Rp199K/bln</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Nama Depan</label>
+            <input class="form-input" type="text" id="reg-fname" placeholder="Budi">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Nama Belakang</label>
+            <input class="form-input" type="text" id="reg-lname" placeholder="Santoso">
+          </div>
+        </div>
+        <div style="margin-bottom:18px;"></div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <div class="form-input-icon">
+            <span class="fi-icon">✉️</span>
+            <input class="form-input" type="email" id="reg-email" placeholder="nama@email.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="form-input-icon">
+            <span class="fi-icon">🔒</span>
+            <input class="form-input" type="password" id="reg-pass" placeholder="Min. 8 karakter" oninput="checkStrength(this.value)">
+          </div>
+          <div class="password-strength"><div class="ps-fill" id="ps-fill"></div></div>
+          <div class="ps-text" id="ps-text"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Konfirmasi Password</label>
+          <div class="form-input-icon">
+            <span class="fi-icon">🔒</span>
+            <input class="form-input" type="password" id="reg-pass2" placeholder="Ulangi password" onkeydown="if(event.key==='Enter')doRegister()">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:18px;font-size:12px;color:var(--t2);">
+          <input type="checkbox" id="reg-terms" style="accent-color:var(--blue);margin-top:2px;flex-shrink:0;">
+          <label for="reg-terms">Saya menyetujui <a href="#" style="color:var(--blue);">Syarat & Ketentuan</a> dan <a href="#" style="color:var(--blue);">Kebijakan Privasi</a></label>
+        </div>
+
+        <button class="btn-submit" id="reg-btn" onclick="doRegister()">
+          🚀 Daftar & Mulai Gratis
+        </button>
+
+        <div class="terms">
+          Sudah punya akun? <a onclick="switchTab('login')" style="cursor:pointer;">Masuk di sini</a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ SUCCESS STATE ══ -->
+    <div class="success-state" id="success-state">
+      <div class="success-icon">🎉</div>
+      <div class="success-title" id="success-title">Selamat Datang!</div>
+      <div class="success-sub" id="success-sub">Akun kamu berhasil dibuat. Kamu akan diarahkan ke dashboard...</div>
+      <a href="index.html" class="btn-goto">Buka Dashboard →</a>
+    </div>
+
+  </div>
+
+  <div class="back-link">
+    <a href="landing.html">← Kembali ke Beranda</a>
+  </div>
+
+</div>
+
+<script>
+// Check URL param for tab
+const params = new URLSearchParams(window.location.search);
+if(params.get('tab')==='register') switchTab('register');
+
+function switchTab(tab) {
+  document.getElementById('pane-login').classList.toggle('active', tab==='login');
+  document.getElementById('pane-register').classList.toggle('active', tab==='register');
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+}
+
+let selectedPlan = 'pro';
+function selectPlan(p) {
+  selectedPlan = p;
+  document.getElementById('plan-free').classList.toggle('selected', p==='free');
+  document.getElementById('plan-pro').classList.toggle('selected', p==='pro');
+}
+
+function showAlert(id, msg, type='error') {
+  const el = document.getElementById(id);
+  el.className = 'alert '+type;
+  el.textContent = (type==='error'?'⚠️ ':'✅ ')+msg;
+  el.style.display = 'block';
+  setTimeout(()=>el.style.display='none', 4000);
+}
+
+function checkStrength(val) {
+  const fill = document.getElementById('ps-fill');
+  const text = document.getElementById('ps-text');
+  if(!val){fill.style.width='0%';text.textContent='';return;}
+  let score = 0;
+  if(val.length>=8) score++;
+  if(/[A-Z]/.test(val)) score++;
+  if(/[0-9]/.test(val)) score++;
+  if(/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [{pct:'25%',color:'var(--bear)',label:'Lemah'},{pct:'50%',color:'var(--bear)',label:'Cukup'},{pct:'75%',color:'var(--gold)',label:'Sedang'},{pct:'100%',color:'var(--bull)',label:'Kuat 💪'}];
+  const l = levels[score-1] || levels[0];
+  fill.style.width = l.pct;
+  fill.style.background = l.color;
+  text.style.color = l.color;
+  text.textContent = l.label;
+}
+
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const btn = document.getElementById('login-btn');
+
+  if(!email){showAlert('login-alert','Email tidak boleh kosong');return;}
+  if(!pass){showAlert('login-alert','Password tidak boleh kosong');return;}
+  if(!/\S+@\S+\.\S+/.test(email)){showAlert('login-alert','Format email tidak valid');return;}
+
+  // Simulate loading
+  btn.classList.add('loading');
+  btn.textContent = 'Memverifikasi...';
+
+  setTimeout(()=>{
+    btn.classList.remove('loading');
+    btn.innerHTML = '🔐 Masuk ke Dashboard';
+    // Demo: accept any email with password 6+ chars
+    if(pass.length < 6) {
+      showAlert('login-alert','Email atau password salah');
+      return;
+    }
+    showSuccess(`Selamat Datang Kembali! 👋`, `Login berhasil. Mengarahkan ke dashboard...`);
+  }, 1200);
+}
+
+function doRegister() {
+  const fname = document.getElementById('reg-fname').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  const terms = document.getElementById('reg-terms').checked;
+  const btn = document.getElementById('reg-btn');
+
+  if(!fname){showAlert('reg-alert','Nama depan tidak boleh kosong');return;}
+  if(!email){showAlert('reg-alert','Email tidak boleh kosong');return;}
+  if(!/\S+@\S+\.\S+/.test(email)){showAlert('reg-alert','Format email tidak valid');return;}
+  if(pass.length<8){showAlert('reg-alert','Password minimal 8 karakter');return;}
+  if(pass!==pass2){showAlert('reg-alert','Konfirmasi password tidak cocok');return;}
+  if(!terms){showAlert('reg-alert','Harap setujui Syarat & Ketentuan');return;}
+
+  btn.classList.add('loading');
+  btn.textContent = 'Membuat akun...';
+
+  setTimeout(()=>{
+    btn.classList.remove('loading');
+    btn.innerHTML = '🚀 Daftar & Mulai Gratis';
+    const planLabel = selectedPlan==='pro'?'Pro (14 hari trial)':'Gratis';
+    showSuccess(`Akun Berhasil Dibuat! 🎉`, `Selamat ${fname}! Akun ${planLabel} kamu aktif. Kamu akan diarahkan ke dashboard...`);
+  }, 1500);
+}
+
+function showSuccess(title, sub) {
+  document.getElementById('success-title').textContent = title;
+  document.getElementById('success-sub').textContent = sub;
+  document.getElementById('pane-login').style.display = 'none';
+  document.getElementById('pane-register').style.display = 'none';
+  document.getElementById('success-state').style.display = 'block';
+  document.querySelector('.tab-row').style.display = 'none';
+  setTimeout(()=>window.location.href='index.html', 2500);
+}
+
+function socialLogin(provider) {
+  const btn = event.target;
+  btn.textContent = '⏳ Menghubungkan...';
+  setTimeout(()=>{
+    showSuccess(`Login dengan ${provider} Berhasil!`, `Mengarahkan ke dashboard...`);
+  }, 1000);
+}
+
+function showForgot() {
+  const email = document.getElementById('login-email').value || prompt('Masukkan email kamu:');
+  if(email) showAlert('login-alert', `Link reset password dikirim ke ${email}`, 'success');
+}
+
+// Particle BG
+const canvas = document.getElementById('bg');
+const renderer = new THREE.WebGLRenderer({canvas,alpha:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,1000);
+camera.position.z = 30;
+const geo = new THREE.BufferGeometry();
+const pos = new Float32Array(1500*3);
+for(let i=0;i<1500*3;i++) pos[i]=(Math.random()-0.5)*100;
+geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+const mat = new THREE.PointsMaterial({color:0x7B2FFF,size:0.12,transparent:true,opacity:0.35});
+const pts = new THREE.Points(geo,mat);
+scene.add(pts);
+let t=0;
+(function a(){requestAnimationFrame(a);t+=0.0004;pts.rotation.y=t;pts.rotation.x=t*0.3;renderer.render(scene,camera);})();
+window.addEventListener('resize',()=>{renderer.setSize(window.innerWidth,window.innerHeight);camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();});
+</script>
+</body>
+</html>
